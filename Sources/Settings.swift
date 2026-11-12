@@ -34,6 +34,7 @@ final class Settings: ObservableObject {
     @Published var statusWeather: Bool
     @Published var statusBattery: Bool
     @Published var statusClock: Bool
+    @Published var statusEvent: Bool
     @Published var weatherAuto: Bool
     @Published var weatherCity: String
     @Published var weatherLat: Double
@@ -59,6 +60,7 @@ final class Settings: ObservableObject {
         statusWeather = b("statusWeather", true)
         statusBattery = b("statusBattery", true)
         statusClock = b("statusClock", true)
+        statusEvent = b("statusEvent", true)
         weatherAuto = b("weatherAuto", true)
         weatherCity = defaults.string(forKey: "weatherCity") ?? "Karlsruhe"
         weatherLat = defaults.object(forKey: "weatherLat") as? Double ?? 49.0094
@@ -83,6 +85,7 @@ final class Settings: ObservableObject {
             ("statusWeather", $statusWeather.map { $0 as Any }.eraseToAnyPublisher()),
             ("statusBattery", $statusBattery.map { $0 as Any }.eraseToAnyPublisher()),
             ("statusClock", $statusClock.map { $0 as Any }.eraseToAnyPublisher()),
+            ("statusEvent", $statusEvent.map { $0 as Any }.eraseToAnyPublisher()),
             ("weatherAuto", $weatherAuto.map { $0 as Any }.eraseToAnyPublisher()),
             ("weatherCity", $weatherCity.map { $0 as Any }.eraseToAnyPublisher()),
             ("weatherLat", $weatherLat.map { $0 as Any }.eraseToAnyPublisher()),

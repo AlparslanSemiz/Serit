@@ -31,7 +31,7 @@ Both build Şerit from source on your Mac, so they need Apple's Command Line Too
 - **Now playing.** Play/pause and next work with any player, because they send real media keys. The song title shows for Spotify, Music, and YouTube Music or YouTube in Brave, Chrome, Safari and Arc.
 - **Volume and brightness.** Hold the key and a slider opens right over the controls, like Pock, without moving anything else on the strip. The knob follows your finger one to one, and the slider folds back into the keys shortly after you lift. A quick tap opens the full slider with − and + steps and the exact percentage, which closes by itself after a few seconds.
 - **Screenshot.** Opens the same toolbar as ⇧⌘5.
-- **Weather, battery, clock.** Weather for where you are (city level, Open-Meteo, no API key), the battery percentage inside the battery icon, and the time.
+- **Weather, battery, next event, clock.** Weather for where you are (city level, Open-Meteo, no API key), the battery percentage inside the battery icon, your next calendar event in the coming hours, and the time.
 - **Keys for the app in front.** Back, forward, reload and new tab when a browser is in front. Run, stop, terminal and command palette in VS Code, Cursor and Windsurf.
 - **‹ More.** Previous track, mute, volume, brightness and keyboard backlight sliders, Mission Control, screenshot, display sleep and lock screen. ✕ brings you back.
 

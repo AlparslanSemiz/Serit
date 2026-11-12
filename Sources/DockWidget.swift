@@ -75,6 +75,7 @@ final class DockWidget: NSObject {
     static var mediaTitleRoom: CGFloat = 0
     private var mediaTitleShown = true
     private var appKeysWidth: CGFloat = 0
+    private var eventWidth: CGFloat = 0
 
     func makeItem() -> NSTouchBarItem {
         let item = NSCustomTouchBarItem(identifier: Self.id)
@@ -99,6 +100,10 @@ final class DockWidget: NSObject {
                   NSWorkspace.didActivateApplicationNotification, NSWorkspace.didHideApplicationNotification,
                   NSWorkspace.didUnhideApplicationNotification] {
             nc.addObserver(self, selector: #selector(reload), name: n, object: nil)
+        }
+        NotificationCenter.default.addObserver(forName: NextEvent.widthChanged, object: nil, queue: .main) { [weak self] n in
+            self?.eventWidth = n.userInfo?["width"] as? CGFloat ?? 0
+            self?.reload()
         }
         NotificationCenter.default.addObserver(forName: AppKeys.widthChanged, object: nil, queue: .main) { [weak self] n in
             self?.appKeysWidth = n.userInfo?["width"] as? CGFloat ?? 0
@@ -164,7 +169,7 @@ final class DockWidget: NSObject {
             stack.addArrangedSubview(tile)
         }
         tiles = newTiles
-        let cap = max(140, Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom) - appKeysWidth)
+        let cap = max(140, Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom) - appKeysWidth - eventWidth)
         widthConstraint?.constant = min(CGFloat(order.count) * 46 + 4, cap)
     }
 
