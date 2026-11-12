@@ -43,8 +43,12 @@ final class DockTile: NSButton {
     required init?(coder: NSCoder) { fatalError() }
 
     func setRunning(_ running: Bool, active: Bool) {
-        dot.isHidden = !running
-        layer?.backgroundColor = active ? NSColor.white.withAlphaComponent(0.16).cgColor : NSColor.clear.cgColor
+        // Fade the dot and the active highlight instead of snapping.
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.2)
+        dot.layer?.opacity = running ? 1 : 0
+        layer?.backgroundColor = active ? NSColor.white.withAlphaComponent(0.18).cgColor : NSColor.clear.cgColor
+        CATransaction.commit()
     }
 
     func setBadge(_ text: String?) {

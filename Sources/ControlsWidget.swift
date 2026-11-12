@@ -128,13 +128,16 @@ enum TB {
 /// A bar made of ready-made items (used for panels).
 final class PanelBar: NSTouchBar, NSTouchBarDelegate {
     private var items: [NSTouchBarItem.Identifier: NSTouchBarItem] = [:]
-    init(_ list: [NSTouchBarItem?]) {
+    /// `trailing` items are pushed to the right edge (that's where the close key lives,
+    /// right under the finger that opened the panel).
+    init(_ list: [NSTouchBarItem?], trailing: [NSTouchBarItem?] = []) {
         super.init()
         delegate = self
         var ids: [NSTouchBarItem.Identifier] = []
-        for case let i? in list {
-            if i.identifier == .flexibleSpace || i.identifier == .fixedSpaceSmall { ids.append(i.identifier); continue }
-            items[i.identifier] = i; ids.append(i.identifier)
+        for case let i? in list { items[i.identifier] = i; ids.append(i.identifier) }
+        if !trailing.isEmpty {
+            ids.append(.flexibleSpace)
+            for case let i? in trailing { items[i.identifier] = i; ids.append(i.identifier) }
         }
         defaultItemIdentifiers = ids
     }
@@ -151,6 +154,7 @@ final class QuickControls: NSObject {
     static let moreID = NSTouchBarItem.Identifier("local.serit.more")
 
     private weak var host: TouchBarHost?
+    private weak var volumeKey: HoldSlideKey?
     private var volumeButton: NSButton?
     private var brightnessButton: NSButton?
     private var syncTimer: Timer?
@@ -172,9 +176,11 @@ final class QuickControls: NSObject {
     func item(for id: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
         switch id {
         case Self.volumeID:
-            return TB.item(id.rawValue, HoldSlideKey(symbol: { SystemVolume.symbol }, get: { SystemVolume.effective },
+            let k = HoldSlideKey(symbol: { SystemVolume.symbol }, get: { SystemVolume.effective },
                                                      set: { SystemVolume.level = $0; if $0 > 0 { SystemVolume.muted = false } },
-                                                     onTap: { [weak self] in self?.openVolume() }))
+                                                     onTap: { [weak self] in self?.openVolume() })
+            volumeKey = k
+            return TB.item(id.rawValue, k)
         case Self.brightnessID:
             return TB.item(id.rawValue, HoldSlideKey(symbol: { DisplayBrightness.symbol }, get: { DisplayBrightness.level },
                                                      set: { DisplayBrightness.level = $0 },
@@ -200,6 +206,8 @@ final class QuickControls: NSObject {
         case "volume": openVolume()
         case "brightness": openBrightness()
         case "more": openMore()
+        case "hold": volumeKey?.debugHold(true)
+        case "release": volumeKey?.debugHold(false)
         default: close()
         }
     }
@@ -259,12 +267,12 @@ final class QuickControls: NSObject {
 
     private func volumePanel() -> NSTouchBar {
         clearPanelRefs()
-        return PanelBar([closeItem("chevron.left"), TB.item("local.serit.panel.volume", volumeRow(width: 520))])
+        return PanelBar([TB.item("local.serit.panel.volume", volumeRow(width: 560))], trailing: [closeItem("xmark")])
     }
 
     private func brightnessPanel() -> NSTouchBar {
         clearPanelRefs()
-        return PanelBar([closeItem("chevron.left"), TB.item("local.serit.panel.brightness", brightnessRow(width: 520))])
+        return PanelBar([TB.item("local.serit.panel.brightness", brightnessRow(width: 560))], trailing: [closeItem("xmark")])
     }
 
     private func morePanel() -> NSTouchBar {
@@ -296,13 +304,12 @@ final class QuickControls: NSObject {
             for s in [vol, bri] { s.constraints.filter { $0.firstAttribute == .width }.forEach { $0.constant = 110 } }
         }
         return PanelBar([
-            closeItem(),
             TB.item("local.serit.more.media", media),
             TB.item("local.serit.more.volume", volRow),
             TB.item("local.serit.more.brightness", briRow),
             kbItem,
             TB.item("local.serit.more.system", system),
-        ])
+        ], trailing: [closeItem("chevron.right")])
     }
 
     // MARK: panel actions

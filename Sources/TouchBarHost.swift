@@ -206,6 +206,8 @@ final class TouchBarHost: NSObject {
     }
 
     func hide() {
+        panelTimeout?.cancel()
+        if let p = panel { PrivateTouchBar.dismiss(p); panel = nil }
         if let bar { PrivateTouchBar.dismiss(bar) }
     }
 

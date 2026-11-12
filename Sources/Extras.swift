@@ -3,51 +3,62 @@ import AppKit
 
 // MARK: - Press and slide
 
-/// A key for volume or brightness. A quick tap opens the full slider panel; holding it
-/// (or starting to move) turns the key itself into a slider: slide left or right to adjust.
+/// A key for volume or brightness. A quick tap opens the full slider panel. Holding it
+/// (or starting to move) grows the key into a compact slider right where it is: slide left
+/// or right to adjust, lift to let it shrink back.
 final class HoldSlideKey: NSView {
     private let symbol: () -> String
     private let get: () -> Float
     private let set: (Float) -> Void
     private let onTap: () -> Void
+
     private let icon = NSImageView()
     private let label = NSTextField(labelWithString: "")
-    private let fill = NSView()
+    private let track = CALayer()
+    private let trackFill = CALayer()
+    private let knob = CALayer()
+    private var width: NSLayoutConstraint!
+
     private var startX: CGFloat = 0
     private var startValue: Float = 0
+    private var value: Float = 0
     private var sliding = false
     private var holdTimer: Timer?
     private var refresh: Timer?
+
+    private let restWidth: CGFloat = 60
+    private let openWidth: CGFloat = 230
     /// Points of finger travel for the full 0–100 % range.
-    private let travel: CGFloat = 240
+    private let travel: CGFloat = 200
 
     init(symbol: @escaping () -> String, get: @escaping () -> Float, set: @escaping (Float) -> Void, onTap: @escaping () -> Void) {
         self.symbol = symbol; self.get = get; self.set = set; self.onTap = onTap
         super.init(frame: NSRect(x: 0, y: 0, width: 60, height: 30))
         allowedTouchTypes = [.direct]
         wantsLayer = true
-        layer?.backgroundColor = NSColor(white: 0.38, alpha: 1).cgColor
-        layer?.cornerRadius = 6
+        layer?.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
+        layer?.cornerRadius = 7
         layer?.masksToBounds = true
         translatesAutoresizingMaskIntoConstraints = false
-        widthAnchor.constraint(equalToConstant: 60).isActive = true
+        width = widthAnchor.constraint(equalToConstant: restWidth); width.isActive = true
         heightAnchor.constraint(equalToConstant: 30).isActive = true
 
-        fill.wantsLayer = true
-        fill.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.28).cgColor
-        fill.isHidden = true
-        addSubview(fill)
+        track.backgroundColor = NSColor(white: 1, alpha: 0.22).cgColor
+        track.cornerRadius = 2.5
+        trackFill.backgroundColor = NSColor.white.cgColor
+        trackFill.cornerRadius = 2.5
+        knob.backgroundColor = NSColor.white.cgColor
+        knob.cornerRadius = 8
+        knob.shadowOpacity = 0.35; knob.shadowRadius = 2; knob.shadowOffset = CGSize(width: 0, height: -1)
+        for l in [track, trackFill, knob] { l.opacity = 0; layer?.addSublayer(l) }
 
-        icon.contentTintColor = .white
         icon.imageScaling = .scaleProportionallyDown
-        icon.frame = NSRect(x: 16, y: 3, width: 28, height: 24)
         addSubview(icon)
 
         label.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
         label.textColor = .white
-        label.alignment = .center
-        label.frame = NSRect(x: 0, y: 6, width: 60, height: 18)
-        label.isHidden = true
+        label.alignment = .right
+        label.alphaValue = 0
         addSubview(label)
 
         updateIcon()
@@ -59,42 +70,87 @@ final class HoldSlideKey: NSView {
     required init?(coder: NSCoder) { fatalError() }
     deinit { refresh?.invalidate(); holdTimer?.invalidate() }
 
+    override func layout() {
+        super.layout()
+        let w = bounds.width
+        // Icon slides from the centre (at rest) to the left edge (open).
+        let iconW: CGFloat = 26
+        icon.frame = NSRect(x: sliding ? 8 : (w - iconW) / 2, y: 3, width: iconW, height: 24)
+        label.frame = NSRect(x: w - 50, y: 6, width: 42, height: 18)
+        placeTrack(animated: false)
+    }
+
+    private func placeTrack(animated: Bool) {
+        let w = bounds.width
+        let x0: CGFloat = 42, x1 = w - 56
+        let tw = max(0, x1 - x0)
+        let y = bounds.midY - 2.5
+        CATransaction.begin()
+        CATransaction.setDisableActions(!animated)
+        CATransaction.setAnimationDuration(0.08)
+        track.frame = CGRect(x: x0, y: y, width: tw, height: 5)
+        trackFill.frame = CGRect(x: x0, y: y, width: tw * CGFloat(value), height: 5)
+        knob.frame = CGRect(x: x0 + tw * CGFloat(value) - 8, y: bounds.midY - 8, width: 16, height: 16)
+        CATransaction.commit()
+    }
+
     private func updateIcon() {
         icon.image = NSImage(systemSymbolName: symbol(), accessibilityDescription: nil)?
             .withSymbolConfiguration(.init(pointSize: 17, weight: .medium).applying(.init(paletteColors: [.white])))
     }
 
-    private func show(_ v: Float) {
+    private func show(_ v: Float, animated: Bool = true) {
+        value = v
         label.stringValue = "\(Int((v * 100).rounded()))%"
-        fill.frame = NSRect(x: 0, y: 0, width: bounds.width * CGFloat(v), height: bounds.height)
+        updateIcon()
+        placeTrack(animated: animated)
     }
+
+    private func setOpen(_ open: Bool) {
+        sliding = open
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = open ? 0.18 : 0.22
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1)   // quick out, soft settle
+            ctx.allowsImplicitAnimation = true
+            width.animator().constant = open ? openWidth : restWidth
+            label.animator().alphaValue = open ? 1 : 0
+            superview?.layoutSubtreeIfNeeded()
+            layoutSubtreeIfNeeded()
+        }
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(open ? 0.18 : 0.12)
+        for l in [track, trackFill, knob] { l.opacity = open ? 1 : 0 }
+        layer?.backgroundColor = NSColor(white: open ? 0.30 : 0.36, alpha: 1).cgColor
+        CATransaction.commit()
+    }
+
+    /// Test hook: show the open state without a finger.
+    func debugHold(_ on: Bool) { if on { startValue = get(); beginSlide() } else { setOpen(false) } }
 
     private func beginSlide() {
         guard !sliding else { return }
-        sliding = true
         holdTimer?.invalidate()
-        icon.isHidden = true; label.isHidden = false; fill.isHidden = false
-        show(startValue)
-    }
-
-    private func endSlide() {
-        sliding = false
-        icon.isHidden = false; label.isHidden = true; fill.isHidden = true
-        updateIcon()
+        value = startValue
+        setOpen(true)
+        show(startValue, animated: false)
     }
 
     override func touchesBegan(with event: NSEvent) {
         guard let t = event.touches(matching: .began, in: self).first else { return }
         startX = t.location(in: self).x
         startValue = get()
+        // Press feedback before anything else happens.
+        CATransaction.begin(); CATransaction.setAnimationDuration(0.08)
+        layer?.backgroundColor = NSColor(white: 0.46, alpha: 1).cgColor
+        CATransaction.commit()
         holdTimer?.invalidate()
-        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: false) { [weak self] _ in self?.beginSlide() }
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.22, repeats: false) { [weak self] _ in self?.beginSlide() }
     }
 
     override func touchesMoved(with event: NSEvent) {
         guard let t = event.touches(matching: .moved, in: self).first else { return }
         let dx = t.location(in: self).x - startX
-        if !sliding && abs(dx) > 6 { beginSlide() }
+        if !sliding && abs(dx) > 5 { beginSlide() }
         guard sliding else { return }
         let v = max(0, min(1, startValue + Float(dx / travel)))
         set(v); show(v)
@@ -102,12 +158,21 @@ final class HoldSlideKey: NSView {
 
     override func touchesEnded(with event: NSEvent) {
         holdTimer?.invalidate()
-        if sliding { endSlide() } else { onTap() }
+        if sliding {
+            // Linger a moment on the final value, then fold back.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.setOpen(false) }
+        } else {
+            CATransaction.begin(); CATransaction.setAnimationDuration(0.15)
+            layer?.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
+            CATransaction.commit()
+            onTap()
+        }
     }
 
     override func touchesCancelled(with event: NSEvent) {
         holdTimer?.invalidate()
-        if sliding { endSlide() }
+        if sliding { setOpen(false) }
+        layer?.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
     }
 }
 
