@@ -2,6 +2,7 @@
 
 <h1 align="center">Şerit</h1>
 <p align="center">A Touch Bar that stays put.</p>
+<p align="center"><a href="https://github.com/AlparslanSemiz/Serit/actions/workflows/build.yml"><img src="https://github.com/AlparslanSemiz/Serit/actions/workflows/build.yml/badge.svg" alt="build"></a> <a href="https://github.com/AlparslanSemiz/Serit/releases/latest"><img src="https://img.shields.io/github/v/release/AlparslanSemiz/Serit" alt="release"></a></p>
 
 <p align="center"><img src="assets/touchbar.png" alt="Şerit on the Touch Bar: main strip, volume panel and the extra controls" width="100%"></p>
 
