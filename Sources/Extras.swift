@@ -4,22 +4,27 @@ import AppKit
 // MARK: - Press and slide
 
 /// A key for volume or brightness, modelled on Pock's sliders. A quick tap opens the full
-/// panel. Holding the key (or starting to move) opens a wide slider in place, with the
-/// quiet and loud icons at its ends; the knob follows the finger one to one, and the
-/// slider folds back shortly after the finger lifts.
+/// panel. Holding the key opens a slider right on top of it, centred on the key, without
+/// moving anything else on the strip; the knob follows the finger one to one and the
+/// slider folds back into the key shortly after the finger lifts.
 final class HoldSlideKey: NSView {
     private let symbol: () -> String
     private let get: () -> Float
     private let set: (Float) -> Void
     private let onTap: () -> Void
 
+    private let background = CALayer()
     private let icon = NSImageView()
+    // the slider that floats over the key
+    private let overlay = NSView()
     private let minIcon = NSImageView()
     private let maxIcon = NSImageView()
     private let track = CALayer()
     private let trackFill = CALayer()
     private let knob = CALayer()
-    private var width: NSLayoutConstraint!
+
+    /// The view the slider spreads over (the whole control group). Falls back to the key.
+    weak var overlayHost: NSView?
 
     private var startX: CGFloat = 0
     private var startValue: Float = 0
@@ -29,26 +34,38 @@ final class HoldSlideKey: NSView {
     private var refresh: Timer?
     private var closeWork: DispatchWorkItem?
 
-    private let restWidth: CGFloat = 60
-    private let openWidth: CGFloat = 400
-    private let inset: CGFloat = 40          // room for the end icons
-    private var trackWidth: CGFloat { openWidth - 2 * inset }
+    private let keyWidth: CGFloat = 70
+    private let inset: CGFloat = 36
+    private var sliderWidth: CGFloat { overlay.bounds.width > 0 ? overlay.bounds.width : 240 }
+    private var trackWidth: CGFloat { max(40, sliderWidth - 2 * inset) }
 
-    /// An ease-out with a soft landing; reads as smooth on the Touch Bar's 60 Hz.
     static let curve = CAMediaTimingFunction(controlPoints: 0.22, 1.0, 0.36, 1.0)
 
     init(symbol: @escaping () -> String, minSymbol: String, maxSymbol: String,
          get: @escaping () -> Float, set: @escaping (Float) -> Void, onTap: @escaping () -> Void) {
         self.symbol = symbol; self.get = get; self.set = set; self.onTap = onTap
-        super.init(frame: NSRect(x: 0, y: 0, width: 60, height: 30))
+        super.init(frame: NSRect(x: 0, y: 0, width: 70, height: 30))
         allowedTouchTypes = [.direct]
         wantsLayer = true
-        layer?.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
-        layer?.cornerRadius = 7
-        layer?.masksToBounds = true
+        layer?.masksToBounds = false                    // the slider is drawn beyond the key
         translatesAutoresizingMaskIntoConstraints = false
-        width = widthAnchor.constraint(equalToConstant: restWidth); width.isActive = true
+        widthAnchor.constraint(equalToConstant: keyWidth).isActive = true
         heightAnchor.constraint(equalToConstant: 30).isActive = true
+
+        background.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
+        background.cornerRadius = 7
+        layer?.addSublayer(background)
+
+        icon.imageScaling = .scaleProportionallyDown
+        addSubview(icon)
+
+        overlay.wantsLayer = true
+        overlay.layer?.backgroundColor = NSColor(white: 0.22, alpha: 1).cgColor
+        overlay.layer?.cornerRadius = 8
+        overlay.layer?.borderWidth = 1
+        overlay.layer?.borderColor = NSColor(white: 1, alpha: 0.12).cgColor
+        overlay.alphaValue = 0
+        overlay.isHidden = true
 
         track.backgroundColor = NSColor(white: 1, alpha: 0.22).cgColor
         track.cornerRadius = 3
@@ -57,13 +74,13 @@ final class HoldSlideKey: NSView {
         knob.backgroundColor = NSColor.white.cgColor
         knob.cornerRadius = 11
         knob.shadowOpacity = 0.4; knob.shadowRadius = 3; knob.shadowOffset = CGSize(width: 0, height: -1)
-        for l in [track, trackFill, knob] { l.opacity = 0; layer?.addSublayer(l) }
-
-        for (v, name) in [(icon, ""), (minIcon, minSymbol), (maxIcon, maxSymbol)] {
+        for l in [track, trackFill, knob] { overlay.layer?.addSublayer(l) }
+        for (v, name) in [(minIcon, minSymbol), (maxIcon, maxSymbol)] {
             v.imageScaling = .scaleProportionallyDown
-            if !name.isEmpty { v.image = Self.white(name, size: 14); v.alphaValue = 0 }
-            addSubview(v)
+            v.image = Self.white(name, size: 14)
+            overlay.addSubview(v)
         }
+
         updateIcon()
         refresh = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             guard let self, !self.sliding else { return }
@@ -81,43 +98,63 @@ final class HoldSlideKey: NSView {
 
     override func layout() {
         super.layout()
-        let w = bounds.width
-        icon.frame = NSRect(x: (w - 26) / 2, y: 3, width: 26, height: 24)
-        minIcon.frame = NSRect(x: 10, y: 5, width: 22, height: 20)
-        maxIcon.frame = NSRect(x: w - 34, y: 5, width: 24, height: 20)
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        background.frame = bounds
+        CATransaction.commit()
+        icon.frame = NSRect(x: (bounds.width - 26) / 2, y: 3, width: 26, height: 24)
+    }
+
+    private func layoutOverlay() {
+        let host = overlayHost ?? self
+        if overlay.superview !== host { host.addSubview(overlay, positioned: .above, relativeTo: nil) }
+        overlay.frame = host.bounds
+        minIcon.frame = NSRect(x: 8, y: 5, width: 22, height: 20)
+        maxIcon.frame = NSRect(x: overlay.bounds.width - 32, y: 5, width: 24, height: 20)
         placeTrack()
     }
 
     private func placeTrack() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)        // the knob sticks to the finger, no lag
-        let tw = max(0, bounds.width - 2 * inset)
         let y = bounds.midY - 3
-        track.frame = CGRect(x: inset, y: y, width: tw, height: 6)
-        trackFill.frame = CGRect(x: inset, y: y, width: tw * CGFloat(value), height: 6)
-        knob.frame = CGRect(x: inset + tw * CGFloat(value) - 11, y: bounds.midY - 11, width: 22, height: 22)
+        track.frame = CGRect(x: inset, y: y, width: trackWidth, height: 6)
+        trackFill.frame = CGRect(x: inset, y: y, width: trackWidth * CGFloat(value), height: 6)
+        knob.frame = CGRect(x: inset + trackWidth * CGFloat(value) - 11, y: bounds.midY - 11, width: 22, height: 22)
         CATransaction.commit()
     }
 
     private func setOpen(_ open: Bool) {
         sliding = open
         closeWork?.cancel()
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = open ? 0.34 : 0.3
+        guard let ol = overlay.layer else { return }
+        if open { layoutOverlay(); overlay.isHidden = false }
+        // Grow out of the pressed key, then settle over the whole group.
+        let host = overlay.superview ?? self
+        let keyCenter = convert(NSPoint(x: bounds.midX, y: bounds.midY), to: host)
+        let scale = CATransform3DMakeScale(bounds.width / max(1, overlay.bounds.width), 1, 1)
+        let shift = CATransform3DMakeTranslation(keyCenter.x - overlay.frame.midX, 0, 0)
+        let from = CATransform3DConcat(scale, shift)
+        let anim = CABasicAnimation(keyPath: "transform")
+        anim.fromValue = open ? from : CATransform3DIdentity
+        anim.toValue = open ? CATransform3DIdentity : from
+        anim.duration = open ? 0.32 : 0.26
+        anim.timingFunction = Self.curve
+        ol.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        ol.position = CGPoint(x: overlay.frame.midX, y: overlay.frame.midY)
+        ol.transform = open ? CATransform3DIdentity : from
+        ol.add(anim, forKey: "grow")
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = open ? 0.22 : 0.26
             ctx.timingFunction = Self.curve
-            ctx.allowsImplicitAnimation = true
-            width.animator().constant = open ? openWidth : restWidth
+            overlay.animator().alphaValue = open ? 1 : 0
             icon.animator().alphaValue = open ? 0 : 1
-            minIcon.animator().alphaValue = open ? 1 : 0
-            maxIcon.animator().alphaValue = open ? 1 : 0
-            superview?.layoutSubtreeIfNeeded()
-            layoutSubtreeIfNeeded()
-        }
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(open ? 0.3 : 0.18)
-        CATransaction.setAnimationTimingFunction(Self.curve)
-        for l in [track, trackFill, knob] { l.opacity = open ? 1 : 0 }
-        layer?.backgroundColor = NSColor(white: open ? 0.24 : 0.36, alpha: 1).cgColor
+        }, completionHandler: { [weak self] in
+            guard let self, !self.sliding else { return }
+            self.overlay.isHidden = true
+            self.overlay.layer?.transform = CATransform3DIdentity
+        })
+        CATransaction.begin(); CATransaction.setAnimationDuration(0.2)
+        background.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
         CATransaction.commit()
     }
 
@@ -128,8 +165,8 @@ final class HoldSlideKey: NSView {
         guard !sliding else { return }
         holdTimer?.invalidate()
         value = startValue
+        layoutOverlay()
         setOpen(true)
-        placeTrack()
     }
 
     override func touchesBegan(with event: NSEvent) {
@@ -139,7 +176,7 @@ final class HoldSlideKey: NSView {
         startValue = sliding ? value : get()
         if !sliding {
             CATransaction.begin(); CATransaction.setAnimationDuration(0.1)
-            layer?.backgroundColor = NSColor(white: 0.46, alpha: 1).cgColor
+            background.backgroundColor = NSColor(white: 0.48, alpha: 1).cgColor
             CATransaction.commit()
             holdTimer?.invalidate()
             holdTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in self?.beginSlide() }
@@ -151,10 +188,8 @@ final class HoldSlideKey: NSView {
         let dx = t.location(in: self).x - startX
         if !sliding && abs(dx) > 4 { beginSlide() }
         guard sliding else { return }
-        // 1:1 with the track, like a real slider.
-        let v = max(0, min(1, startValue + Float(dx / trackWidth)))
-        value = v
-        set(v)
+        value = max(0, min(1, startValue + Float(dx / trackWidth)))
+        set(value)
         placeTrack()
     }
 
@@ -166,7 +201,7 @@ final class HoldSlideKey: NSView {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.9, execute: w)
         } else {
             CATransaction.begin(); CATransaction.setAnimationDuration(0.2)
-            layer?.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
+            background.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
             CATransaction.commit()
             onTap()
         }
@@ -175,7 +210,7 @@ final class HoldSlideKey: NSView {
     override func touchesCancelled(with event: NSEvent) {
         holdTimer?.invalidate()
         if sliding { setOpen(false) }
-        layer?.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
+        background.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
     }
 }
 

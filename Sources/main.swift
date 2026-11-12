@@ -47,9 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
         if s.showAppKeys { appKeys = AppKeys(); ids.append(AppKeys.id) }
         ids.append(.flexibleSpace)
         if s.showMedia { media = MediaWidget(); ids.append(MediaWidget.id) }
-        if s.showVolume { ids.append(QuickControls.volumeID) }
-        if s.showBrightness { ids.append(QuickControls.brightnessID) }
-        if s.showScreenshot { ids.append(QuickControls.screenshotID) }
+        if s.showVolume || s.showBrightness || s.showScreenshot { ids.append(QuickControls.clusterID) }
         if s.showStatus { status = StatusWidget(); ids.append(StatusWidget.id) }
         ids.append(QuickControls.moreID)
         bar.defaultItemIdentifiers = ids
@@ -57,9 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
         let total: CGFloat = TouchBarHost.useFullWidth ? 1000 : 680
         var others: CGFloat = 0
         if s.showMedia { others += 260 }
-        if s.showVolume { others += 60 }
-        if s.showBrightness { others += 60 }
-        if s.showScreenshot { others += 60 }
+        if s.showVolume { others += 76 }
+        if s.showBrightness { others += 76 }
+        if s.showScreenshot { others += 76 }
         if s.showStatus { others += 215 }
         others += 50   // the ‹ key
         DockWidget.maxWidth = max(140, total - others)
