@@ -23,6 +23,7 @@ final class Settings: ObservableObject {
     @Published var showVolume: Bool
     @Published var showBrightness: Bool
     @Published var showStatus: Bool
+    @Published var showScreenshot: Bool
     // Dock
     @Published var dockPinned: Bool
     @Published var dockBadges: Bool
@@ -32,6 +33,7 @@ final class Settings: ObservableObject {
     @Published var statusWeather: Bool
     @Published var statusBattery: Bool
     @Published var statusClock: Bool
+    @Published var weatherAuto: Bool
     @Published var weatherCity: String
     @Published var weatherLat: Double
     @Published var weatherLon: Double
@@ -47,13 +49,15 @@ final class Settings: ObservableObject {
         showVolume = b("showVolume", true)
         showBrightness = b("showBrightness", true)
         showStatus = b("showStatus", true)
-        dockPinned = b("dockPinned", true)
+        showScreenshot = b("showScreenshot", true)
+        dockPinned = b("dockPinned", false)
         dockBadges = b("dockBadges", true)
         dockHideFinder = b("dockHideFinder", false)
         dockTapFrontmostHides = b("dockTapFrontmostHides", true)
         statusWeather = b("statusWeather", true)
         statusBattery = b("statusBattery", true)
         statusClock = b("statusClock", true)
+        weatherAuto = b("weatherAuto", true)
         weatherCity = defaults.string(forKey: "weatherCity") ?? "Karlsruhe"
         weatherLat = defaults.object(forKey: "weatherLat") as? Double ?? 49.0094
         weatherLon = defaults.object(forKey: "weatherLon") as? Double ?? 8.4044
@@ -68,6 +72,7 @@ final class Settings: ObservableObject {
             ("showVolume", $showVolume.map { $0 as Any }.eraseToAnyPublisher()),
             ("showBrightness", $showBrightness.map { $0 as Any }.eraseToAnyPublisher()),
             ("showStatus", $showStatus.map { $0 as Any }.eraseToAnyPublisher()),
+            ("showScreenshot", $showScreenshot.map { $0 as Any }.eraseToAnyPublisher()),
             ("dockPinned", $dockPinned.map { $0 as Any }.eraseToAnyPublisher()),
             ("dockBadges", $dockBadges.map { $0 as Any }.eraseToAnyPublisher()),
             ("dockHideFinder", $dockHideFinder.map { $0 as Any }.eraseToAnyPublisher()),
@@ -75,6 +80,7 @@ final class Settings: ObservableObject {
             ("statusWeather", $statusWeather.map { $0 as Any }.eraseToAnyPublisher()),
             ("statusBattery", $statusBattery.map { $0 as Any }.eraseToAnyPublisher()),
             ("statusClock", $statusClock.map { $0 as Any }.eraseToAnyPublisher()),
+            ("weatherAuto", $weatherAuto.map { $0 as Any }.eraseToAnyPublisher()),
             ("weatherCity", $weatherCity.map { $0 as Any }.eraseToAnyPublisher()),
             ("weatherLat", $weatherLat.map { $0 as Any }.eraseToAnyPublisher()),
             ("weatherLon", $weatherLon.map { $0 as Any }.eraseToAnyPublisher()),

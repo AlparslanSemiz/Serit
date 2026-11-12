@@ -139,22 +139,59 @@ final class TouchBarHost: NSObject {
 
     @objc private func trayTapped() {
         if isMinimized || bar == nil { isMinimized = false; reassert() }
-        else if let bar { PrivateTouchBar.minimize(bar); isMinimized = true }
+        else if let shown = panel ?? bar { PrivateTouchBar.minimize(shown); isMinimized = true }
     }
 
     /// Build a fresh bar from current settings and show it.
     func rebuild() {
+        if let p = panel { PrivateTouchBar.dismiss(p); panel = nil }
         if let old = bar { PrivateTouchBar.dismiss(old) }
         bar = makeBar()
         isMinimized = false
         reassert()
     }
 
+    /// A panel (slider, "more" controls) replaces the main bar until it is closed.
+    /// Popovers don't open inside a system-modal bar, so panels are whole bars of their own.
+    private(set) var panel: NSTouchBar?
+    private var panelTimeout: DispatchWorkItem?
+
+    func open(_ p: NSTouchBar, autoClose: TimeInterval? = nil) {
+        if let old = panel { PrivateTouchBar.dismiss(old) }
+        panel = p
+        isMinimized = false
+        PrivateTouchBar.present(p, placement: Self.useFullWidth ? 1 : 0, trayIdentifier: Self.trayID)
+        panelTimeout?.cancel()
+        if let autoClose {
+            let w = DispatchWorkItem { [weak self] in self?.closePanel() }
+            panelTimeout = w
+            DispatchQueue.main.asyncAfter(deadline: .now() + autoClose, execute: w)
+        }
+    }
+
+    /// Keeps an auto-closing panel open while the user is still touching it.
+    func touchPanel(autoClose: TimeInterval) {
+        guard panel != nil else { return }
+        panelTimeout?.cancel()
+        let w = DispatchWorkItem { [weak self] in self?.closePanel() }
+        panelTimeout = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + autoClose, execute: w)
+    }
+
+    func closePanel() {
+        panelTimeout?.cancel()
+        guard let p = panel else { return }
+        panel = nil
+        PrivateTouchBar.dismiss(p)
+        reassert()
+    }
+
     @objc func reassert() {
-        guard let bar, !isMinimized, Settings.shared.enabled else { return }
+        guard bar != nil, !isMinimized, Settings.shared.enabled else { return }
         // A tiny delay lets the system finish its own bar swap after app activation.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            PrivateTouchBar.present(bar, placement: Self.useFullWidth ? 1 : 0, trayIdentifier: Self.trayID)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self, let shown = self.panel ?? self.bar else { return }
+            PrivateTouchBar.present(shown, placement: Self.useFullWidth ? 1 : 0, trayIdentifier: Self.trayID)
         }
     }
 
