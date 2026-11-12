@@ -9,11 +9,20 @@
 
 ## Install
 
+With Homebrew:
+
+```sh
+brew install alparslansemiz/tap/serit
+brew services start serit
+```
+
+Or with one line, without Homebrew:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/AlparslanSemiz/Serit/main/install.sh | zsh
 ```
 
-The script builds Şerit on your Mac (it needs Apple's Command Line Tools), installs it to `~/Applications` and starts it at login. Then turn on **Şerit** under System Settings → Privacy & Security → **Accessibility**, and optionally **Location Services** for local weather.
+Both build Şerit on your Mac (it needs Apple's Command Line Tools), installs it to `~/Applications` and starts it at login. Then turn on **Şerit** under System Settings → Privacy & Security → **Accessibility**, and optionally **Location Services** for local weather.
 
 ## What's on the strip
 
