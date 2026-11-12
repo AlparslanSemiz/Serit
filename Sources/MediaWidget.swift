@@ -182,9 +182,10 @@ final class MediaWidget: NSObject {
 
         func control(_ symbol: String, _ sel: Selector) -> NSButton {
             let b = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil)!, target: self, action: sel)
-            b.bezelColor = NSColor.white.withAlphaComponent(0.12)
+            b.bezelColor = NSColor(white: 0.38, alpha: 1)
+            b.contentTintColor = .white
             b.translatesAutoresizingMaskIntoConstraints = false
-            b.widthAnchor.constraint(equalToConstant: 38).isActive = true
+            b.widthAnchor.constraint(equalToConstant: 46).isActive = true
             return b
         }
         let play = control("playpause.fill", #selector(togglePlay))

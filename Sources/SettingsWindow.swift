@@ -30,13 +30,14 @@ struct SettingsView: View {
                 Toggle(isOn: $s.showMedia) { Label("Şu an çalan", systemImage: "music.note") }
                 Toggle(isOn: $s.showVolume) { Label("Ses", systemImage: "speaker.wave.2.fill") }
                 Toggle(isOn: $s.showBrightness) { Label("Parlaklık", systemImage: "sun.max.fill") }
+                Toggle(isOn: $s.showScreenshot) { Label("Ekran görüntüsü", systemImage: "camera.viewfinder") }
                 Toggle(isOn: $s.showStatus) { Label("Durum", systemImage: "clock") }
             } header: { Text("Widget'lar") } footer: {
-                Text("Ses ve parlaklık: dokun → kaydırıcı açılır. Basılı tutup kaydır → doğrudan ayarlar.").foregroundStyle(.secondary)
+                Text("Ses veya parlaklığa dokununca kaydırıcı şeridi açılır, birkaç saniye sonra kendiliğinden kapanır. En sağdaki ‹ düğmesi diğer kontrolleri açar.").foregroundStyle(.secondary)
             }
 
             Section {
-                Toggle("Dock'ta sabitlenmiş uygulamaları göster", isOn: $s.dockPinned)
+                Toggle("Sabitlenmiş uygulamaları da göster (kapalıyken sadece açık uygulamalar)", isOn: $s.dockPinned)
                 Toggle("Bildirim rozetleri", isOn: $s.dockBadges)
                 Toggle("Öndeki uygulamaya dokununca gizle", isOn: $s.dockTapFrontmostHides)
                 Toggle("Finder'ı gizle", isOn: $s.dockHideFinder)
@@ -44,9 +45,10 @@ struct SettingsView: View {
 
             Section {
                 Toggle("Hava durumu", isOn: $s.statusWeather)
+                Toggle("Konumu otomatik bul", isOn: $s.weatherAuto)
                 Toggle("Pil", isOn: $s.statusBattery)
                 Toggle("Saat", isOn: $s.statusClock)
-                LabeledContent("Şehir", value: s.weatherCity)
+                LabeledContent(s.weatherAuto ? "Konum izni yoksa şehir" : "Şehir", value: s.weatherCity)
                 HStack {
                     TextField("Şehir ara", text: $cs.query).onSubmit(search)
                     Button(cs.searching ? "…" : "Ara", action: search).disabled(cs.query.isEmpty || cs.searching)

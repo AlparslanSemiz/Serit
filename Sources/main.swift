@@ -8,7 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
     var statusItem: NSStatusItem!
     // Widgets live as long as the bar they belong to.
     var dock: DockWidget?, media: MediaWidget?, status: StatusWidget?
-    var volume: SliderWidget?, brightness: SliderWidget?
+    lazy var quick = QuickControls(host: host)
 
     func applicationDidFinishLaunching(_ n: Notification) {
         if !AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) {
@@ -27,6 +27,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
             PrivateTouchBar.setControlStripPresence(TouchBarHost.trayID, Settings.shared.showTrayButton)
             if Settings.shared.enabled { self.host.rebuild() } else { self.host.hide() }
         }
+        // Lets scripts (and the self-test) open panels without touching the bar:
+        //   notifyutil-style: post "local.serit.panel" with object volume | brightness | more | close
+        DistributedNotificationCenter.default().addObserver(forName: Notification.Name("local.serit.panel"), object: nil, queue: .main) { [weak self] n in
+            self?.quick.debugOpen(n.object as? String ?? "")
+        }
         log("Şerit started")
     }
 
@@ -37,21 +42,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
         let bar = NSTouchBar()
         bar.delegate = self
         var ids: [NSTouchBarItem.Identifier] = []
-        dock = nil; media = nil; status = nil; volume = nil; brightness = nil
+        dock = nil; media = nil; status = nil
         if s.showDock { dock = DockWidget(); ids.append(DockWidget.id) }
         ids.append(.flexibleSpace)
         if s.showMedia { media = MediaWidget(); ids.append(MediaWidget.id) }
-        if s.showVolume { volume = Controls.volume(); ids.append(volume!.identifier) }
-        if s.showBrightness { brightness = Controls.brightness(); ids.append(brightness!.identifier) }
+        if s.showVolume { ids.append(QuickControls.volumeID) }
+        if s.showBrightness { ids.append(QuickControls.brightnessID) }
+        if s.showScreenshot { ids.append(QuickControls.screenshotID) }
         if s.showStatus { status = StatusWidget(); ids.append(StatusWidget.id) }
+        ids.append(QuickControls.moreID)
         bar.defaultItemIdentifiers = ids
         // Touch Bar is ~1004 pt wide (full width) or ~685 pt next to the Control Strip.
         let total: CGFloat = TouchBarHost.useFullWidth ? 1000 : 680
         var others: CGFloat = 0
-        if s.showMedia { others += 250 }
-        if s.showVolume { others += 72 }
-        if s.showBrightness { others += 72 }
+        if s.showMedia { others += 260 }
+        if s.showVolume { others += 60 }
+        if s.showBrightness { others += 60 }
+        if s.showScreenshot { others += 60 }
         if s.showStatus { others += 215 }
+        others += 50   // the ‹ key
         DockWidget.maxWidth = max(140, total - others)
         DockWidget.mediaTitleRoom = s.showMedia ? 90 : 0
         return bar
@@ -62,9 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
         case DockWidget.id: return dock?.makeItem()
         case MediaWidget.id: return media?.makeItem()
         case StatusWidget.id: return status?.makeItem()
-        case volume?.identifier: return volume?.makeItem()
-        case brightness?.identifier: return brightness?.makeItem()
-        default: return nil
+        default: return quick.item(for: id)
         }
     }
 

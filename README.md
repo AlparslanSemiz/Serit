@@ -1,54 +1,58 @@
-<p align="center"><img src="assets/icon.png" width="128" alt="Şerit simgesi"></p>
+<p align="center"><img src="assets/icon.png" width="128" alt="Şerit icon"></p>
 
 <h1 align="center">Şerit</h1>
-<p align="center"><i>Touch Bar'ın hızlı ve kendini onaran hali.</i></p>
+<p align="center">A Touch Bar that stays put.</p>
 
-<p align="center"><img src="assets/touchbar.png" alt="Şerit Touch Bar'da" width="100%"></p>
+<p align="center"><img src="assets/touchbar.png" alt="Şerit on the Touch Bar: main strip, volume panel and the extra controls" width="100%"></p>
 
-Şerit, Touch Bar'lı MacBook Pro'lar için bir Touch Bar uygulaması: Dock, şu an çalan, ses, parlaklık, hava durumu, pil ve saat tek şeritte. Pock'tan ilham aldı, onun en büyük derdini çözmek için yazıldı: **Touch Bar'ın boşa düşmesi.**
+Şerit (Turkish for "strip") replaces the Touch Bar on Intel and Apple Silicon MacBook Pros with something useful: your open apps, what's playing, volume, brightness, a screenshot key, the weather, battery and the time. It was written because Pock kept leaving the Touch Bar blank.
 
-## Neden Şerit?
-
-- **Kendini onarır.** macOS Touch Bar'ı sessizce sisteme geri verdiğinde (uygulama değişimi, uyku, ekran kilidi, Space değişimi, `TouchBarServer` yeniden başlaması) Şerit kendini hemen geri koyar.
-- **Her Touch Bar ayarında çalışır.** macOS "Control Strip" modundayken uygulama alanı yoktur; Şerit bunu algılar ve tam genişliğe geçer. "Uygulama Denetimleri + Control Strip" modunda Control Strip'in yanında durur.
-- **Gerçek Dock.** Sabitlenmiş + açık uygulamalar Dock sırasıyla, açık uygulama noktası, aktif uygulama vurgusu, **bildirim rozetleri**. Fazlası kaydırılır. Öndeki uygulamaya dokununca gizlenir.
-- **Her oynatıcıyla medya.** Oynat/duraklat ve ileri, gerçek medya tuşu olaylarıyla çalışır. Şarkı adı: Spotify ve Music (kapakla), Brave/Chrome/Safari/Arc'taki YouTube Music ve YouTube.
-- **Bas-kaydır ses ve parlaklık.** Dokun → kaydırıcı; basılı tut ve kaydır → doğrudan ayarla. Klavyeden değişince simge de güncellenir.
-- **Çalışan hava durumu.** Open-Meteo (anahtarsız, ücretsiz), ayarlardan şehir araması.
-- **Sade ayarlar.** Menü çubuğundan; her widget'ı aç/kapat.
-
-## Kurulum
+## Install
 
 ```sh
-git clone https://github.com/AlparslanSemiz/Serit.git && cd Serit
-./build.sh
+curl -fsSL https://raw.githubusercontent.com/AlparslanSemiz/Serit/main/install.sh | zsh
 ```
 
-Sonra **Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik**'te **Şerit**'i aç (rozetler ve medya tuşları için). Spotify/Music ilk kez sorulduğunda Otomasyon iznini ver.
+The script builds Şerit on your Mac (it needs Apple's Command Line Tools), installs it to `~/Applications` and starts it at login. Then turn on **Şerit** under System Settings → Privacy & Security → **Accessibility**, and optionally **Location Services** for local weather.
 
-`build.sh` uygulamayı `~/Applications/Şerit.app` olarak kurar ve bir LaunchAgent ile girişte başlatır. Pock kullanıyorsan önce onu kapat.
+## What's on the strip
 
-> İzin her derlemede sıfırlanmasın diye, varsa `Veda Local Signing` sertifikasıyla imzalar ([Veda](https://github.com/AlparslanSemiz/Veda) → `scripts/make_signing_cert.sh`).
+- **Dock.** Your open apps with a dot for running and a highlight for the active one, plus notification badges. Tap to switch, tap the front app to hide it. Pinned Dock apps can be shown too.
+- **Now playing.** Play/pause and next work with any player, because they send real media keys. The song title shows for Spotify, Music, and YouTube Music or YouTube in Brave, Chrome, Safari and Arc.
+- **Volume and brightness.** Tap to open a slider with − and + steps and the exact percentage. It closes by itself after a few seconds.
+- **Screenshot.** Opens the same toolbar as ⇧⌘5.
+- **Weather, battery, clock.** Weather for where you are (city level, Open-Meteo, no API key), the battery percentage inside the battery icon, and the time.
+- **‹ More.** Previous track, mute, both sliders, Mission Control, screenshot, display sleep and lock screen. ✕ brings you back.
 
-## Nasıl çalışır?
+## Why it doesn't go blank
 
-Touch Bar'ı uygulamalar dışında kullanmak için Apple'ın gizli API'leri gerekir (`NSTouchBar presentSystemModalTouchBar:placement:systemTrayItemIdentifier:`, `DFRFoundation`, `DisplayServices`, `MediaRemote`). Şerit hepsini çalışma anında ObjC runtime ve `dlsym` ile bulur; hiçbir gizli framework'e bağlanmaz, eksik bir sembol çökme değil sadece o özelliğin kapanması demektir.
+macOS quietly takes the Touch Bar back when you switch apps, wake the Mac, unlock the screen, change Spaces, or when `TouchBarServer` restarts. Şerit listens for all of these and puts itself back. It also works in every Touch Bar mode: when macOS is set to show the full Control Strip there is no app area, so Şerit uses the full width instead.
 
-## Öz-test
+## Settings
+
+Click the strip icon in the menu bar → **Settings…** to turn each part on or off, show pinned Dock apps, or set a fallback city for the weather.
+
+## How it works
+
+Showing your own Touch Bar outside your app needs private API (`NSTouchBar presentSystemModalTouchBar:placement:systemTrayItemIdentifier:`, `DFRFoundation`, `DisplayServices`, `MediaRemote`). Şerit looks all of them up at runtime through the Objective-C runtime and `dlsym` and links none of them, so a missing symbol turns one feature off instead of crashing the app.
+
+Popovers don't open inside a system-wide Touch Bar, so the sliders and extra controls are full bars of their own that replace the main strip while open.
+
+## Self-test
 
 ```sh
 ~/Applications/Şerit.app/Contents/MacOS/Serit --selftest
 ```
 
-Touch Bar düğmelerinin çağırdığı her işlevi (ses, parlaklık, Dock'ta açma/gizleme, rozetler, pil, hava durumu, şu an çalan) gerçekten çalıştırır, sonucu ölçer ve değiştirdiğini geri alır.
+Runs every action behind the buttons (volume, brightness, Dock open/hide, badges, battery, weather, now playing), checks the result and puts everything back.
 
-## Kaldırma
+## Uninstall
 
 ```sh
 launchctl bootout gui/$(id -u)/local.$(whoami).serit
-rm -rf ~/Applications/Şerit.app ~/Library/LaunchAgents/local.$(whoami).serit.plist
+rm -rf ~/Applications/Şerit.app ~/Library/LaunchAgents/local.$(whoami).serit.plist ~/.local/src/Serit
 ```
 
-## Lisans
+## License
 
 MIT
