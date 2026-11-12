@@ -152,6 +152,8 @@ final class QuickControls: NSObject {
     static let brightnessID = NSTouchBarItem.Identifier("local.serit.brightness")
     static let screenshotID = NSTouchBarItem.Identifier("local.serit.screenshot")
     static let moreID = NSTouchBarItem.Identifier("local.serit.more")
+    /// Volume, brightness and screenshot live in one item so the hold-slider can spread over all three.
+    static let clusterID = NSTouchBarItem.Identifier("local.serit.controls")
 
     private weak var host: TouchBarHost?
     private weak var volumeKey: HoldSlideKey?
@@ -185,6 +187,25 @@ final class QuickControls: NSObject {
             return TB.item(id.rawValue, HoldSlideKey(symbol: { DisplayBrightness.symbol }, minSymbol: "sun.min.fill", maxSymbol: "sun.max.fill", get: { DisplayBrightness.level },
                                                      set: { DisplayBrightness.level = $0 },
                                                      onTap: { [weak self] in self?.openBrightness() }))
+        case Self.clusterID:
+            let s = Settings.shared
+            let cluster = NSView()
+            var views: [NSView] = []
+            var keys: [HoldSlideKey] = []
+            if s.showVolume, let v = (item(for: Self.volumeID) as? NSCustomTouchBarItem)?.view as? HoldSlideKey { views.append(v); keys.append(v) }
+            if s.showBrightness, let b = (item(for: Self.brightnessID) as? NSCustomTouchBarItem)?.view as? HoldSlideKey { views.append(b); keys.append(b) }
+            if s.showScreenshot { views.append(TB.button("camera.viewfinder", width: 70, target: self, action: #selector(screenshot))) }
+            guard !views.isEmpty else { return nil }
+            let stack = NSStackView(views: views); stack.spacing = 6
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            cluster.addSubview(stack)
+            NSLayoutConstraint.activate([
+                stack.leadingAnchor.constraint(equalTo: cluster.leadingAnchor), stack.trailingAnchor.constraint(equalTo: cluster.trailingAnchor),
+                stack.topAnchor.constraint(equalTo: cluster.topAnchor), stack.bottomAnchor.constraint(equalTo: cluster.bottomAnchor),
+            ])
+            cluster.wantsLayer = true
+            keys.forEach { $0.overlayHost = cluster }
+            return TB.item(id.rawValue, cluster)
         case Self.screenshotID:
             return TB.item(id.rawValue, TB.button("camera.viewfinder", target: self, action: #selector(screenshot)))
         case Self.moreID:
