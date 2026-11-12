@@ -172,11 +172,13 @@ final class QuickControls: NSObject {
     func item(for id: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
         switch id {
         case Self.volumeID:
-            let b = TB.button(SystemVolume.symbol, target: self, action: #selector(openVolume)); volumeButton = b
-            return TB.item(id.rawValue, b)
+            return TB.item(id.rawValue, HoldSlideKey(symbol: { SystemVolume.symbol }, get: { SystemVolume.effective },
+                                                     set: { SystemVolume.level = $0; if $0 > 0 { SystemVolume.muted = false } },
+                                                     onTap: { [weak self] in self?.openVolume() }))
         case Self.brightnessID:
-            let b = TB.button(DisplayBrightness.symbol, target: self, action: #selector(openBrightness)); brightnessButton = b
-            return TB.item(id.rawValue, b)
+            return TB.item(id.rawValue, HoldSlideKey(symbol: { DisplayBrightness.symbol }, get: { DisplayBrightness.level },
+                                                     set: { DisplayBrightness.level = $0 },
+                                                     onTap: { [weak self] in self?.openBrightness() }))
         case Self.screenshotID:
             return TB.item(id.rawValue, TB.button("camera.viewfinder", target: self, action: #selector(screenshot)))
         case Self.moreID:
@@ -285,11 +287,20 @@ final class QuickControls: NSObject {
         ]); system.spacing = 4
         let volRow = NSStackView(views: [mute, vol]); volRow.spacing = 6
         let briRow = NSStackView(views: [sun, bri]); briRow.spacing = 6
+        var kbItem: NSTouchBarItem?
+        if KeyboardBacklight.available {
+            let kb = TB.button("light.max", width: 46, target: self, action: #selector(keyboardToggle))
+            let ks = slider(value: KeyboardBacklight.level, action: #selector(keyboardChanged(_:)), width: 110)
+            let kbRow = NSStackView(views: [kb, ks]); kbRow.spacing = 6
+            kbItem = TB.item("local.serit.more.keyboard", kbRow)
+            for s in [vol, bri] { s.constraints.filter { $0.firstAttribute == .width }.forEach { $0.constant = 110 } }
+        }
         return PanelBar([
             closeItem(),
             TB.item("local.serit.more.media", media),
             TB.item("local.serit.more.volume", volRow),
             TB.item("local.serit.more.brightness", briRow),
+            kbItem,
             TB.item("local.serit.more.system", system),
         ])
     }
@@ -314,6 +325,12 @@ final class QuickControls: NSObject {
     @objc private func brightnessUp() { DisplayBrightness.level = step(DisplayBrightness.level, 0.0625); sync(); updateBrightnessLabel(); keepOpenIfSliderPanel() }
     @objc private func brightnessDown() { DisplayBrightness.level = step(DisplayBrightness.level, -0.0625); sync(); updateBrightnessLabel(); keepOpenIfSliderPanel() }
     @objc private func brightnessMax() { DisplayBrightness.level = 1; sync(); updateBrightnessLabel(); keepOpenIfSliderPanel() }
+    @objc private func keyboardChanged(_ s: NSSlider) { KeyboardBacklight.level = s.floatValue }
+    private var keyboardBeforeOff: Float = 0.5
+    @objc private func keyboardToggle() {
+        let v = KeyboardBacklight.level
+        if v > 0.01 { keyboardBeforeOff = v; KeyboardBacklight.level = 0 } else { KeyboardBacklight.level = max(keyboardBeforeOff, 0.3) }
+    }
     @objc private func prevTrack() { MediaKeys.press(MediaKeys.previous) }
     @objc private func playPause() { MediaKeys.press(MediaKeys.play) }
     @objc private func nextTrack() { MediaKeys.press(MediaKeys.next) }

@@ -19,10 +19,11 @@ The script builds Şerit on your Mac (it needs Apple's Command Line Tools), inst
 
 - **Dock.** Your open apps with a dot for running and a highlight for the active one, plus notification badges. Tap to switch, tap the front app to hide it. Pinned Dock apps can be shown too.
 - **Now playing.** Play/pause and next work with any player, because they send real media keys. The song title shows for Spotify, Music, and YouTube Music or YouTube in Brave, Chrome, Safari and Arc.
-- **Volume and brightness.** Tap to open a slider with − and + steps and the exact percentage. It closes by itself after a few seconds.
+- **Volume and brightness.** Press and slide left or right to adjust right on the key. A quick tap opens a full slider with − and + steps and the exact percentage, which closes by itself after a few seconds.
 - **Screenshot.** Opens the same toolbar as ⇧⌘5.
 - **Weather, battery, clock.** Weather for where you are (city level, Open-Meteo, no API key), the battery percentage inside the battery icon, and the time.
-- **‹ More.** Previous track, mute, both sliders, Mission Control, screenshot, display sleep and lock screen. ✕ brings you back.
+- **Keys for the app in front.** Back, forward, reload and new tab when a browser is in front. Run, stop, terminal and command palette in VS Code, Cursor and Windsurf.
+- **‹ More.** Previous track, mute, volume, brightness and keyboard backlight sliders, Mission Control, screenshot, display sleep and lock screen. ✕ brings you back.
 
 ## Why it doesn't go blank
 
@@ -44,7 +45,7 @@ Popovers don't open inside a system-wide Touch Bar, so the sliders and extra con
 ~/Applications/Şerit.app/Contents/MacOS/Serit --selftest
 ```
 
-Runs every action behind the buttons (volume, brightness, Dock open/hide, badges, battery, weather, now playing), checks the result and puts everything back.
+Runs every action behind the buttons (volume, brightness, keyboard backlight, Dock open/hide, badges, battery, weather, now playing), checks the result and puts everything back.
 
 ## Uninstall
 

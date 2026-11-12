@@ -7,7 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
     let settingsWindow = SettingsWindowController()
     var statusItem: NSStatusItem!
     // Widgets live as long as the bar they belong to.
-    var dock: DockWidget?, media: MediaWidget?, status: StatusWidget?
+    var dock: DockWidget?, media: MediaWidget?, status: StatusWidget?, appKeys: AppKeys?
     lazy var quick = QuickControls(host: host)
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -42,8 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
         let bar = NSTouchBar()
         bar.delegate = self
         var ids: [NSTouchBarItem.Identifier] = []
-        dock = nil; media = nil; status = nil
+        dock = nil; media = nil; status = nil; appKeys = nil
         if s.showDock { dock = DockWidget(); ids.append(DockWidget.id) }
+        if s.showAppKeys { appKeys = AppKeys(); ids.append(AppKeys.id) }
         ids.append(.flexibleSpace)
         if s.showMedia { media = MediaWidget(); ids.append(MediaWidget.id) }
         if s.showVolume { ids.append(QuickControls.volumeID) }
@@ -71,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
         case DockWidget.id: return dock?.makeItem()
         case MediaWidget.id: return media?.makeItem()
         case StatusWidget.id: return status?.makeItem()
+        case AppKeys.id: return appKeys?.makeItem()
         default: return quick.item(for: id)
         }
     }

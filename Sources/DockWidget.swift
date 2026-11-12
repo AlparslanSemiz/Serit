@@ -70,6 +70,7 @@ final class DockWidget: NSObject {
     /// Room the media title would use; handed to the dock while nothing is playing.
     static var mediaTitleRoom: CGFloat = 0
     private var mediaTitleShown = true
+    private var appKeysWidth: CGFloat = 0
 
     func makeItem() -> NSTouchBarItem {
         let item = NSCustomTouchBarItem(identifier: Self.id)
@@ -94,6 +95,10 @@ final class DockWidget: NSObject {
                   NSWorkspace.didActivateApplicationNotification, NSWorkspace.didHideApplicationNotification,
                   NSWorkspace.didUnhideApplicationNotification] {
             nc.addObserver(self, selector: #selector(reload), name: n, object: nil)
+        }
+        NotificationCenter.default.addObserver(forName: AppKeys.widthChanged, object: nil, queue: .main) { [weak self] n in
+            self?.appKeysWidth = n.userInfo?["width"] as? CGFloat ?? 0
+            self?.reload()
         }
         NotificationCenter.default.addObserver(forName: MediaWidget.titleVisibilityChanged, object: nil, queue: .main) { [weak self] n in
             self?.mediaTitleShown = n.userInfo?["shown"] as? Bool ?? true
@@ -155,7 +160,7 @@ final class DockWidget: NSObject {
             stack.addArrangedSubview(tile)
         }
         tiles = newTiles
-        let cap = Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom)
+        let cap = max(140, Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom) - appKeysWidth)
         widthConstraint?.constant = min(CGFloat(order.count) * 46 + 4, cap)
     }
 
