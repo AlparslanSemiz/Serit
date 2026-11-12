@@ -18,34 +18,57 @@ enum Battery {
         return nil
     }
 
-    /// iOS-style battery: the percentage sits inside the battery, the fill shows the level,
-    /// and a bolt sits next to it while on power.
+    /// iOS-style battery: a soft rounded body, the level as a fill, the percentage inside,
+    /// and a small bolt inside the body while it's on power.
     static func image(percent: Int, charging: Bool, onAC: Bool) -> NSImage {
         let powered = charging || onAC
-        let size = NSSize(width: powered ? 50 : 40, height: 20)
-        return NSImage(size: size, flipped: false) { _ in
-            let body = NSRect(x: 1, y: 2, width: 34, height: 16)
-            let low = percent <= 15 && !onAC
-            let fill: NSColor = powered ? NSColor.systemGreen.withAlphaComponent(0.75)
-                : low ? NSColor.systemRed.withAlphaComponent(0.85) : NSColor(white: 1, alpha: 0.32)
-            NSColor(white: 1, alpha: 0.6).setStroke()
-            let outline = NSBezierPath(roundedRect: body, xRadius: 4.5, yRadius: 4.5); outline.lineWidth = 1.5; outline.stroke()
-            NSColor(white: 1, alpha: 0.6).setFill()
-            NSBezierPath(roundedRect: NSRect(x: 36.5, y: 7, width: 2.5, height: 6), xRadius: 1.2, yRadius: 1.2).fill()
-            let inner = body.insetBy(dx: 2, dy: 2)
-            let w = max(2, inner.width * CGFloat(min(100, max(0, percent))) / 100)
-            fill.setFill()
-            NSBezierPath(roundedRect: NSRect(x: inner.minX, y: inner.minY, width: w, height: inner.height), xRadius: 2.5, yRadius: 2.5).fill()
+        let p = CGFloat(min(100, max(0, percent))) / 100
+        return NSImage(size: NSSize(width: 42, height: 20), flipped: false) { _ in
+            let body = NSRect(x: 1, y: 2.5, width: 35, height: 15)
+            let low = percent <= 20 && !powered
+            // body
+            NSColor(white: 1, alpha: 0.18).setFill()
+            NSBezierPath(roundedRect: body, xRadius: 5, yRadius: 5).fill()
+            // level
+            let top: NSColor = powered ? NSColor(srgbRed: 0.33, green: 0.86, blue: 0.47, alpha: 1)
+                : low ? NSColor(srgbRed: 1.0, green: 0.36, blue: 0.33, alpha: 1) : NSColor(white: 0.98, alpha: 1)
+            let bottom: NSColor = powered ? NSColor(srgbRed: 0.20, green: 0.72, blue: 0.35, alpha: 1)
+                : low ? NSColor(srgbRed: 0.88, green: 0.22, blue: 0.22, alpha: 1) : NSColor(white: 0.82, alpha: 1)
+            NSGraphicsContext.saveGraphicsState()
+            NSBezierPath(roundedRect: body, xRadius: 5, yRadius: 5).addClip()
+            NSGradient(colors: [top, bottom])!.draw(in: NSRect(x: body.minX, y: body.minY, width: body.width * max(p, 0.06), height: body.height), angle: -90)
+            NSGraphicsContext.restoreGraphicsState()
+            // nub
+            NSColor(white: 1, alpha: 0.45).setFill()
+            let nub = NSBezierPath()
+            nub.move(to: NSPoint(x: 37.2, y: 7)); nub.line(to: NSPoint(x: 37.2, y: 13))
+            nub.curve(to: NSPoint(x: 37.2, y: 7), controlPoint1: NSPoint(x: 40.3, y: 12.5), controlPoint2: NSPoint(x: 40.3, y: 7.5))
+            nub.fill()
+            // Percentage: white over the empty part, dark over the fill, split exactly at the
+            // fill edge so it reads at any level.
+            let fillRect = NSRect(x: body.minX, y: body.minY, width: body.width * max(p, 0.06), height: body.height)
+            let font = NSFont.systemFont(ofSize: 11, weight: .bold)
+            let rounded = font.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: 11) } ?? font
             let text = "\(percent)" as NSString
-            let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11, weight: .heavy), .foregroundColor: NSColor.white]
-            let ts = text.size(withAttributes: attrs)
-            text.draw(at: NSPoint(x: body.midX - ts.width / 2, y: body.midY - ts.height / 2 + 0.5), withAttributes: attrs)
-            if powered {
-                let bolt = NSBezierPath()
-                let x: CGFloat = 42
-                bolt.move(to: NSPoint(x: x + 5, y: 19)); bolt.line(to: NSPoint(x: x, y: 9)); bolt.line(to: NSPoint(x: x + 3.5, y: 9))
-                bolt.line(to: NSPoint(x: x + 2, y: 1)); bolt.line(to: NSPoint(x: x + 7.5, y: 11.5)); bolt.line(to: NSPoint(x: x + 4, y: 11.5)); bolt.close()
-                NSColor.white.setFill(); bolt.fill()
+            let ts = text.size(withAttributes: [.font: rounded])
+            let boltW: CGFloat = powered ? 7 : 0
+            let x = body.midX - (ts.width + boltW) / 2
+            let textPoint = NSPoint(x: x + boltW, y: body.midY - ts.height / 2 + 0.5)
+            func drawContent(_ color: NSColor) {
+                text.draw(at: textPoint, withAttributes: [.font: rounded, .foregroundColor: color])
+                if powered {
+                    let b = NSBezierPath(); let bx = x - 1, by = body.minY + 2.5
+                    b.move(to: NSPoint(x: bx + 5, y: by + 10)); b.line(to: NSPoint(x: bx + 1, y: by + 4.5)); b.line(to: NSPoint(x: bx + 3.6, y: by + 4.5))
+                    b.line(to: NSPoint(x: bx + 2.6, y: by)); b.line(to: NSPoint(x: bx + 6.4, y: by + 5.6)); b.line(to: NSPoint(x: bx + 3.8, y: by + 5.6)); b.close()
+                    color.setFill(); b.fill()
+                }
+            }
+            drawContent(.white)
+            if !low && !powered {
+                NSGraphicsContext.saveGraphicsState()
+                NSBezierPath(rect: fillRect).addClip()
+                drawContent(NSColor(white: 0.08, alpha: 1))
+                NSGraphicsContext.restoreGraphicsState()
             }
             return true
         }
