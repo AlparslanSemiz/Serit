@@ -12,7 +12,7 @@
 - **Kendini onarır.** macOS Touch Bar'ı sessizce sisteme geri verdiğinde (uygulama değişimi, uyku, ekran kilidi, Space değişimi, `TouchBarServer` yeniden başlaması) Şerit kendini hemen geri koyar.
 - **Her Touch Bar ayarında çalışır.** macOS "Control Strip" modundayken uygulama alanı yoktur; Şerit bunu algılar ve tam genişliğe geçer. "Uygulama Denetimleri + Control Strip" modunda Control Strip'in yanında durur.
 - **Gerçek Dock.** Sabitlenmiş + açık uygulamalar Dock sırasıyla, açık uygulama noktası, aktif uygulama vurgusu, **bildirim rozetleri**. Fazlası kaydırılır. Öndeki uygulamaya dokununca gizlenir.
-- **Her oynatıcıyla medya.** Oynat/duraklat ve ileri, gerçek medya tuşu olaylarıyla çalışır (Spotify, Music, tarayıcıdaki YouTube…). Spotify ve Music'te şarkı adı + kapak.
+- **Her oynatıcıyla medya.** Oynat/duraklat ve ileri, gerçek medya tuşu olaylarıyla çalışır. Şarkı adı: Spotify ve Music (kapakla), Brave/Chrome/Safari/Arc'taki YouTube Music ve YouTube.
 - **Bas-kaydır ses ve parlaklık.** Dokun → kaydırıcı; basılı tut ve kaydır → doğrudan ayarla. Klavyeden değişince simge de güncellenir.
 - **Çalışan hava durumu.** Open-Meteo (anahtarsız, ücretsiz), ayarlardan şehir araması.
 - **Sade ayarlar.** Menü çubuğundan; her widget'ı aç/kapat.
@@ -33,6 +33,14 @@ Sonra **Sistem Ayarları → Gizlilik ve Güvenlik → Erişilebilirlik**'te **�
 ## Nasıl çalışır?
 
 Touch Bar'ı uygulamalar dışında kullanmak için Apple'ın gizli API'leri gerekir (`NSTouchBar presentSystemModalTouchBar:placement:systemTrayItemIdentifier:`, `DFRFoundation`, `DisplayServices`, `MediaRemote`). Şerit hepsini çalışma anında ObjC runtime ve `dlsym` ile bulur; hiçbir gizli framework'e bağlanmaz, eksik bir sembol çökme değil sadece o özelliğin kapanması demektir.
+
+## Öz-test
+
+```sh
+~/Applications/Şerit.app/Contents/MacOS/Serit --selftest
+```
+
+Touch Bar düğmelerinin çağırdığı her işlevi (ses, parlaklık, Dock'ta açma/gizleme, rozetler, pil, hava durumu, şu an çalan) gerçekten çalıştırır, sonucu ölçer ve değiştirdiğini geri alır.
 
 ## Kaldırma
 

@@ -67,6 +67,9 @@ final class DockWidget: NSObject {
     private var badgeTimer: Timer?
     private var widthConstraint: NSLayoutConstraint?
     static var maxWidth: CGFloat = 430
+    /// Room the media title would use; handed to the dock while nothing is playing.
+    static var mediaTitleRoom: CGFloat = 0
+    private var mediaTitleShown = true
 
     func makeItem() -> NSTouchBarItem {
         let item = NSCustomTouchBarItem(identifier: Self.id)
@@ -91,6 +94,10 @@ final class DockWidget: NSObject {
                   NSWorkspace.didActivateApplicationNotification, NSWorkspace.didHideApplicationNotification,
                   NSWorkspace.didUnhideApplicationNotification] {
             nc.addObserver(self, selector: #selector(reload), name: n, object: nil)
+        }
+        NotificationCenter.default.addObserver(forName: MediaWidget.titleVisibilityChanged, object: nil, queue: .main) { [weak self] n in
+            self?.mediaTitleShown = n.userInfo?["shown"] as? Bool ?? true
+            self?.reload()
         }
         reload()
         if Settings.shared.dockBadges {
@@ -148,7 +155,8 @@ final class DockWidget: NSObject {
             stack.addArrangedSubview(tile)
         }
         tiles = newTiles
-        widthConstraint?.constant = min(CGFloat(order.count) * 46 + 4, Self.maxWidth)
+        let cap = Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom)
+        widthConstraint?.constant = min(CGFloat(order.count) * 46 + 4, cap)
     }
 
     @objc private func tap(_ t: DockTile) {
@@ -169,8 +177,13 @@ final class DockWidget: NSObject {
 
     /// Badges live in the Dock's accessibility tree (AXStatusLabel on each dock item).
     private func refreshBadges() {
+        let badges = readBadges()
+        for (bid, tile) in tiles { tile.setBadge(badges[bid]) }
+    }
+
+    private func readBadges() -> [String: String] {
         guard AXIsProcessTrusted(),
-              let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else { return }
+              let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else { return [:] }
         let ax = AXUIElementCreateApplication(dock.processIdentifier)
         AXUIElementSetMessagingTimeout(ax, 0.3)
         var badges: [String: String] = [:]
@@ -190,6 +203,11 @@ final class DockWidget: NSObject {
                 badges[bid] = l
             }
         }
-        for (bid, tile) in tiles { tile.setBadge(badges[bid]) }
+        return badges
     }
+
+    // Self-test hooks
+    func debugCounts() -> (Int, Int) { (tiles.count, pinnedApps().count) }
+    func debugBadges() -> [String: String] { readBadges() }
+    func debugTap(bundleID: String, url: URL) { tap(DockTile(bundleID: bundleID, url: url, icon: NSImage())) }
 }

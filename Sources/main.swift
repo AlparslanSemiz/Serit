@@ -53,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
         if s.showBrightness { others += 72 }
         if s.showStatus { others += 215 }
         DockWidget.maxWidth = max(140, total - others)
+        DockWidget.mediaTitleRoom = s.showMedia ? 90 : 0
         return bar
     }
 
@@ -94,6 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
     @objc func openAX() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
     }
+}
+
+if CommandLine.arguments.contains("--selftest") {
+    _ = NSApplication.shared
+    exit(SelfTest.run())
 }
 
 let app = NSApplication.shared

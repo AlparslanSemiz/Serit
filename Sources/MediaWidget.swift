@@ -71,7 +71,43 @@ enum NowPlayingSource {
             """), p.count >= 3 {
             candidates.append(NowPlaying(title: p[0], artist: p[1], playing: p[2] == "playing", appBundleID: "com.apple.Music"))
         }
+        if candidates.first(where: { $0.playing }) == nil, let web = fetchBrowser() { candidates.insert(web, at: 0) }
         return candidates.first(where: { $0.playing }) ?? candidates.first
+    }
+
+    /// YouTube Music / YouTube in a browser tab. The tab title carries the song
+    /// ("Song - YouTube Music"); browsers don't expose play state, so it counts as playing.
+    static let browsers = ["com.brave.Browser", "com.google.Chrome", "company.thebrowser.Browser", "com.apple.Safari"]
+    private static func fetchBrowser() -> NowPlaying? {
+        for bid in browsers where running(bid) {
+            let isSafari = bid == "com.apple.Safari"
+            let titleProp = isSafari ? "name" : "title"
+            guard let lines = run("""
+                set out to ""
+                tell application id "\(bid)"
+                  repeat with w in windows
+                    repeat with t in tabs of w
+                      set u to URL of t
+                      if u contains "music.youtube.com" or u contains "youtube.com/watch" then set out to out & (\(titleProp) of t) & "\t" & u & "\n"
+                    end repeat
+                  end repeat
+                end tell
+                return out
+                """) else { continue }
+            let tabs = lines.filter { !$0.isEmpty }.map { $0.components(separatedBy: "\t") }
+            // Prefer YouTube Music, then a YouTube video.
+            let pick = tabs.first { $0.count > 1 && $0[1].contains("music.youtube.com") } ?? tabs.first
+            guard let t = pick, var title = t.first, !title.isEmpty else { continue }
+            for suffix in [" - YouTube Music", " - YouTube"] where title.hasSuffix(suffix) { title.removeLast(suffix.count) }
+            if title == "YouTube Music" || title == "YouTube" || title.isEmpty { continue }
+            // "Song • Artist" or "Song - Artist" when the title has both.
+            var artist = ""
+            for sep in [" • ", " · "] where title.contains(sep) {
+                let parts = title.components(separatedBy: sep); title = parts[0]; artist = parts.dropFirst().joined(separator: sep)
+            }
+            return NowPlaying(title: title, artist: artist, playing: true, appBundleID: bid)
+        }
+        return nil
     }
 }
 
@@ -176,8 +212,16 @@ final class MediaWidget: NSObject {
         }
     }
 
+    static let titleVisibilityChanged = Notification.Name("SeritMediaTitleVisibility")
+    private var titleShown: Bool?
+
     private func update(_ np: NowPlaying?) {
         current = np
+        let shows = !(np?.title.isEmpty ?? true)
+        if shows != titleShown {
+            titleShown = shows
+            NotificationCenter.default.post(name: Self.titleVisibilityChanged, object: nil, userInfo: ["shown": shows])
+        }
         if let np, !np.title.isEmpty {
             label.stringValue = np.artist.isEmpty ? np.title : "\(np.title) · \(np.artist)"
             label.textColor = np.playing ? .white : NSColor.white.withAlphaComponent(0.55)
