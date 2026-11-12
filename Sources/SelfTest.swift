@@ -44,6 +44,16 @@ enum SelfTest {
         spin(0.4)
         check("Parlaklık ayarı", abs(b1 - bt) < 0.03, String(format: "%.0f%% → %.0f%% → geri %.0f%%", b0 * 100, b1 * 100, DisplayBrightness.level * 100))
 
+        // Keyboard backlight: nudge, read back, restore
+        if KeyboardBacklight.available {
+            let k0 = KeyboardBacklight.level
+            let kt: Float = k0 > 0.5 ? k0 - 0.2 : k0 + 0.2
+            KeyboardBacklight.level = kt; spin(0.4)
+            let k1 = KeyboardBacklight.level
+            KeyboardBacklight.level = k0
+            check("Klavye ışığı", abs(k1 - kt) < 0.05, String(format: "%.0f%% → %.0f%% → geri", k0 * 100, k1 * 100))
+        } else { check("Klavye ışığı", false, "CoreBrightness bulunamadı") }
+
         // Battery
         if let b = Battery.read() { check("Pil", (0...100).contains(b.percent), "\(b.percent)%\(b.charging ? ", şarj oluyor" : "")\(b.onAC ? ", adaptör takılı" : "")") }
         else { check("Pil", false, "okunamadı") }

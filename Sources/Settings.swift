@@ -24,6 +24,7 @@ final class Settings: ObservableObject {
     @Published var showBrightness: Bool
     @Published var showStatus: Bool
     @Published var showScreenshot: Bool
+    @Published var showAppKeys: Bool
     // Dock
     @Published var dockPinned: Bool
     @Published var dockBadges: Bool
@@ -50,6 +51,7 @@ final class Settings: ObservableObject {
         showBrightness = b("showBrightness", true)
         showStatus = b("showStatus", true)
         showScreenshot = b("showScreenshot", true)
+        showAppKeys = b("showAppKeys", true)
         dockPinned = b("dockPinned", false)
         dockBadges = b("dockBadges", true)
         dockHideFinder = b("dockHideFinder", false)
@@ -73,6 +75,7 @@ final class Settings: ObservableObject {
             ("showBrightness", $showBrightness.map { $0 as Any }.eraseToAnyPublisher()),
             ("showStatus", $showStatus.map { $0 as Any }.eraseToAnyPublisher()),
             ("showScreenshot", $showScreenshot.map { $0 as Any }.eraseToAnyPublisher()),
+            ("showAppKeys", $showAppKeys.map { $0 as Any }.eraseToAnyPublisher()),
             ("dockPinned", $dockPinned.map { $0 as Any }.eraseToAnyPublisher()),
             ("dockBadges", $dockBadges.map { $0 as Any }.eraseToAnyPublisher()),
             ("dockHideFinder", $dockHideFinder.map { $0 as Any }.eraseToAnyPublisher()),

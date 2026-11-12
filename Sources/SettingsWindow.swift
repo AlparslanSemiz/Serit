@@ -27,13 +27,14 @@ struct SettingsView: View {
 
             Section {
                 Toggle(isOn: $s.showDock) { Label("Dock", systemImage: "dock.rectangle") }
+                Toggle(isOn: $s.showAppKeys) { Label("Öndeki uygulamanın tuşları (tarayıcı, VS Code)", systemImage: "keyboard") }
                 Toggle(isOn: $s.showMedia) { Label("Şu an çalan", systemImage: "music.note") }
                 Toggle(isOn: $s.showVolume) { Label("Ses", systemImage: "speaker.wave.2.fill") }
                 Toggle(isOn: $s.showBrightness) { Label("Parlaklık", systemImage: "sun.max.fill") }
                 Toggle(isOn: $s.showScreenshot) { Label("Ekran görüntüsü", systemImage: "camera.viewfinder") }
                 Toggle(isOn: $s.showStatus) { Label("Durum", systemImage: "clock") }
             } header: { Text("Widget'lar") } footer: {
-                Text("Ses veya parlaklığa dokununca kaydırıcı şeridi açılır, birkaç saniye sonra kendiliğinden kapanır. En sağdaki ‹ düğmesi diğer kontrolleri açar.").foregroundStyle(.secondary)
+                Text("Ses veya parlaklık: dokununca kaydırıcı şeridi açılır, basılı tutup sağa sola kaydırınca doğrudan ayarlanır. En sağdaki ‹ diğer kontrolleri açar.").foregroundStyle(.secondary)
             }
 
             Section {
