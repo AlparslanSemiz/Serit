@@ -20,7 +20,7 @@ done
 iconutil -c icns "$BUILD/Serit.iconset" -o "$APP/Contents/Resources/Serit.icns"
 
 echo "→ derleme"
-swiftc -O Sources/*.swift -o "$APP/Contents/MacOS/Serit" -framework IOKit -framework CoreAudio -framework AudioToolbox -framework CoreLocation
+swiftc -O Sources/*.swift -o "$APP/Contents/MacOS/Serit" -framework IOKit -framework CoreAudio -framework AudioToolbox -framework CoreLocation -framework EventKit
 
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -38,6 +38,7 @@ cat > "$APP/Contents/Info.plist" <<EOF
 <key>LSUIElement</key><true/>
 <key>NSLocationUsageDescription</key><string>Şerit, hava durumunu bulunduğun yer için göstermek üzere konumunu sadece şehir düzeyinde kullanır.</string>
 <key>NSLocationWhenInUseUsageDescription</key><string>Şerit, hava durumunu bulunduğun yer için göstermek üzere konumunu sadece şehir düzeyinde kullanır.</string>
+<key>NSCalendarsFullAccessUsageDescription</key><string>Şerit, takvimdeki sıradaki etkinliği saatin yanında göstermek için takvimini okur.</string>
 <key>NSAppleEventsUsageDescription</key><string>Şerit, Spotify ve Music'te çalan şarkıyı Touch Bar'da göstermek için bu uygulamalara sorar.</string>
 <key>NSHumanReadableCopyright</key><string>Touch Bar'ın hızlı ve kendini onaran hali.</string>
 </dict></plist>

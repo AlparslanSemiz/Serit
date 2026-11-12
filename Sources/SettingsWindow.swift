@@ -49,6 +49,7 @@ struct SettingsView: View {
                 Toggle("Konumu otomatik bul", isOn: $s.weatherAuto)
                 Toggle("Pil", isOn: $s.statusBattery)
                 Toggle("Saat", isOn: $s.statusClock)
+                Toggle("Takvimde sıradaki etkinlik", isOn: $s.statusEvent)
                 LabeledContent(s.weatherAuto ? "Konum izni yoksa şehir" : "Şehir", value: s.weatherCity)
                 HStack {
                     TextField("Şehir ara", text: $cs.query).onSubmit(search)

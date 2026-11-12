@@ -1,6 +1,7 @@
 import AppKit
 import IOKit.ps
 import CoreLocation
+import EventKit
 
 enum Battery {
     static func read() -> (percent: Int, charging: Bool, onAC: Bool)? {
@@ -174,11 +175,52 @@ final class Weather {
     }
 }
 
+/// The next calendar event in the coming few hours, shown next to the clock.
+final class NextEvent {
+    static let shared = NextEvent()
+    static let widthChanged = Notification.Name("SeritNextEventWidth")
+    private let store = EKEventStore()
+    private(set) var event: EKEvent?
+    private var asked = false
+    private var lastLoad = Date.distantPast
+    var onChange: (() -> Void)?
+
+    init() {
+        NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: store, queue: .main) { [weak self] _ in
+            self?.lastLoad = .distantPast; self?.refresh()
+        }
+    }
+
+    func refresh() {
+        guard Settings.shared.statusEvent else { event = nil; return }
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if status == .notDetermined && !asked {
+            asked = true
+            store.requestFullAccessToEvents { [weak self] _, _ in DispatchQueue.main.async { self?.lastLoad = .distantPast; self?.refresh() } }
+            return
+        }
+        guard status == .fullAccess, Date().timeIntervalSince(lastLoad) > 60 else { return }
+        lastLoad = Date()
+        let now = Date()
+        let pred = store.predicateForEvents(withStart: now, end: now.addingTimeInterval(8 * 3600), calendars: nil)
+        let next = store.events(matching: pred)
+            .filter { !$0.isAllDay && $0.endDate > now }
+            .sorted { $0.startDate < $1.startDate }
+            .first
+        if next?.eventIdentifier != event?.eventIdentifier || next?.startDate != event?.startDate {
+            event = next
+            onChange?()
+            NotificationCenter.default.post(name: Self.widthChanged, object: nil, userInfo: ["width": next == nil ? CGFloat(0) : CGFloat(150)])
+        }
+    }
+}
+
 final class StatusWidget: NSObject {
     static let id = NSTouchBarItem.Identifier("local.serit.status")
     private let weatherButton = NSButton()
     private let batteryView = NSImageView()
     private let clockButton = NSButton()
+    private let eventButton = NSButton()
     private var timer: Timer?
     private let clockFmt: DateFormatter = { let f = DateFormatter(); f.dateFormat = "HH:mm"; return f }()
 
@@ -192,10 +234,20 @@ final class StatusWidget: NSObject {
             b.contentTintColor = .white
         }
         weatherButton.target = self; weatherButton.action = #selector(openWeather)
+        eventButton.isBordered = false
+        eventButton.font = .systemFont(ofSize: 13, weight: .medium)
+        eventButton.contentTintColor = NSColor(white: 1, alpha: 0.75)
+        eventButton.image = NSImage(systemSymbolName: "calendar", accessibilityDescription: nil)
+        eventButton.imagePosition = .imageLeading
+        eventButton.target = self; eventButton.action = #selector(openCalendar)
+        eventButton.isHidden = true
+        NextEvent.shared.onChange = { [weak self] in self?.render() }
+        NextEvent.shared.refresh()
         clockButton.target = self; clockButton.action = #selector(openCalendar)
         var views: [NSView] = []
         if s.statusWeather { views.append(weatherButton) }
         if s.statusBattery { views.append(batteryView) }
+        if s.statusEvent { views.append(eventButton) }
         if s.statusClock { views.append(clockButton) }
         let row = NSStackView(views: views)
         row.spacing = 12
@@ -211,6 +263,7 @@ final class StatusWidget: NSObject {
         timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             LocationProvider.shared.refreshIfNeeded()
             Weather.shared.refreshIfNeeded()
+            NextEvent.shared.refresh()
             self?.render()
         }
         return item
@@ -230,6 +283,13 @@ final class StatusWidget: NSObject {
         } else { batteryView.isHidden = true }
 
         clockButton.title = clockFmt.string(from: Date())
+
+        if let e = NextEvent.shared.event {
+            var title = e.title ?? ""
+            if title.count > 16 { title = String(title.prefix(15)) + "…" }
+            eventButton.title = "\(clockFmt.string(from: e.startDate)) \(title)"
+            eventButton.isHidden = false
+        } else { eventButton.isHidden = true }
     }
 
     @objc private func openWeather() {
