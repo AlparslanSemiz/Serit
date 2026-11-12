@@ -3,9 +3,10 @@ import AppKit
 
 // MARK: - Press and slide
 
-/// A key for volume or brightness. A quick tap opens the full slider panel. Holding it
-/// (or starting to move) grows the key into a compact slider right where it is: slide left
-/// or right to adjust, lift to let it shrink back.
+/// A key for volume or brightness, modelled on Pock's sliders. A quick tap opens the full
+/// panel. Holding the key (or starting to move) opens a wide slider in place, with the
+/// quiet and loud icons at its ends; the knob follows the finger one to one, and the
+/// slider folds back shortly after the finger lifts.
 final class HoldSlideKey: NSView {
     private let symbol: () -> String
     private let get: () -> Float
@@ -13,7 +14,8 @@ final class HoldSlideKey: NSView {
     private let onTap: () -> Void
 
     private let icon = NSImageView()
-    private let label = NSTextField(labelWithString: "")
+    private let minIcon = NSImageView()
+    private let maxIcon = NSImageView()
     private let track = CALayer()
     private let trackFill = CALayer()
     private let knob = CALayer()
@@ -22,16 +24,21 @@ final class HoldSlideKey: NSView {
     private var startX: CGFloat = 0
     private var startValue: Float = 0
     private var value: Float = 0
-    private var sliding = false
+    private(set) var sliding = false
     private var holdTimer: Timer?
     private var refresh: Timer?
+    private var closeWork: DispatchWorkItem?
 
     private let restWidth: CGFloat = 60
-    private let openWidth: CGFloat = 230
-    /// Points of finger travel for the full 0–100 % range.
-    private let travel: CGFloat = 200
+    private let openWidth: CGFloat = 400
+    private let inset: CGFloat = 40          // room for the end icons
+    private var trackWidth: CGFloat { openWidth - 2 * inset }
 
-    init(symbol: @escaping () -> String, get: @escaping () -> Float, set: @escaping (Float) -> Void, onTap: @escaping () -> Void) {
+    /// An ease-out with a soft landing; reads as smooth on the Touch Bar's 60 Hz.
+    static let curve = CAMediaTimingFunction(controlPoints: 0.22, 1.0, 0.36, 1.0)
+
+    init(symbol: @escaping () -> String, minSymbol: String, maxSymbol: String,
+         get: @escaping () -> Float, set: @escaping (Float) -> Void, onTap: @escaping () -> Void) {
         self.symbol = symbol; self.get = get; self.set = set; self.onTap = onTap
         super.init(frame: NSRect(x: 0, y: 0, width: 60, height: 30))
         allowedTouchTypes = [.direct]
@@ -44,23 +51,19 @@ final class HoldSlideKey: NSView {
         heightAnchor.constraint(equalToConstant: 30).isActive = true
 
         track.backgroundColor = NSColor(white: 1, alpha: 0.22).cgColor
-        track.cornerRadius = 2.5
+        track.cornerRadius = 3
         trackFill.backgroundColor = NSColor.white.cgColor
-        trackFill.cornerRadius = 2.5
+        trackFill.cornerRadius = 3
         knob.backgroundColor = NSColor.white.cgColor
-        knob.cornerRadius = 8
-        knob.shadowOpacity = 0.35; knob.shadowRadius = 2; knob.shadowOffset = CGSize(width: 0, height: -1)
+        knob.cornerRadius = 11
+        knob.shadowOpacity = 0.4; knob.shadowRadius = 3; knob.shadowOffset = CGSize(width: 0, height: -1)
         for l in [track, trackFill, knob] { l.opacity = 0; layer?.addSublayer(l) }
 
-        icon.imageScaling = .scaleProportionallyDown
-        addSubview(icon)
-
-        label.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
-        label.textColor = .white
-        label.alignment = .right
-        label.alphaValue = 0
-        addSubview(label)
-
+        for (v, name) in [(icon, ""), (minIcon, minSymbol), (maxIcon, maxSymbol)] {
+            v.imageScaling = .scaleProportionallyDown
+            if !name.isEmpty { v.image = Self.white(name, size: 14); v.alphaValue = 0 }
+            addSubview(v)
+        }
         updateIcon()
         refresh = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
             guard let self, !self.sliding else { return }
@@ -70,57 +73,51 @@ final class HoldSlideKey: NSView {
     required init?(coder: NSCoder) { fatalError() }
     deinit { refresh?.invalidate(); holdTimer?.invalidate() }
 
+    private static func white(_ name: String, size: CGFloat) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: size, weight: .medium).applying(.init(paletteColors: [.white])))
+    }
+    private func updateIcon() { icon.image = Self.white(symbol(), size: 17) }
+
     override func layout() {
         super.layout()
         let w = bounds.width
-        // Icon slides from the centre (at rest) to the left edge (open).
-        let iconW: CGFloat = 26
-        icon.frame = NSRect(x: sliding ? 8 : (w - iconW) / 2, y: 3, width: iconW, height: 24)
-        label.frame = NSRect(x: w - 50, y: 6, width: 42, height: 18)
-        placeTrack(animated: false)
+        icon.frame = NSRect(x: (w - 26) / 2, y: 3, width: 26, height: 24)
+        minIcon.frame = NSRect(x: 10, y: 5, width: 22, height: 20)
+        maxIcon.frame = NSRect(x: w - 34, y: 5, width: 24, height: 20)
+        placeTrack()
     }
 
-    private func placeTrack(animated: Bool) {
-        let w = bounds.width
-        let x0: CGFloat = 42, x1 = w - 56
-        let tw = max(0, x1 - x0)
-        let y = bounds.midY - 2.5
+    private func placeTrack() {
         CATransaction.begin()
-        CATransaction.setDisableActions(!animated)
-        CATransaction.setAnimationDuration(0.08)
-        track.frame = CGRect(x: x0, y: y, width: tw, height: 5)
-        trackFill.frame = CGRect(x: x0, y: y, width: tw * CGFloat(value), height: 5)
-        knob.frame = CGRect(x: x0 + tw * CGFloat(value) - 8, y: bounds.midY - 8, width: 16, height: 16)
+        CATransaction.setDisableActions(true)        // the knob sticks to the finger, no lag
+        let tw = max(0, bounds.width - 2 * inset)
+        let y = bounds.midY - 3
+        track.frame = CGRect(x: inset, y: y, width: tw, height: 6)
+        trackFill.frame = CGRect(x: inset, y: y, width: tw * CGFloat(value), height: 6)
+        knob.frame = CGRect(x: inset + tw * CGFloat(value) - 11, y: bounds.midY - 11, width: 22, height: 22)
         CATransaction.commit()
-    }
-
-    private func updateIcon() {
-        icon.image = NSImage(systemSymbolName: symbol(), accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: 17, weight: .medium).applying(.init(paletteColors: [.white])))
-    }
-
-    private func show(_ v: Float, animated: Bool = true) {
-        value = v
-        label.stringValue = "\(Int((v * 100).rounded()))%"
-        updateIcon()
-        placeTrack(animated: animated)
     }
 
     private func setOpen(_ open: Bool) {
         sliding = open
+        closeWork?.cancel()
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = open ? 0.18 : 0.22
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1)   // quick out, soft settle
+            ctx.duration = open ? 0.34 : 0.3
+            ctx.timingFunction = Self.curve
             ctx.allowsImplicitAnimation = true
             width.animator().constant = open ? openWidth : restWidth
-            label.animator().alphaValue = open ? 1 : 0
+            icon.animator().alphaValue = open ? 0 : 1
+            minIcon.animator().alphaValue = open ? 1 : 0
+            maxIcon.animator().alphaValue = open ? 1 : 0
             superview?.layoutSubtreeIfNeeded()
             layoutSubtreeIfNeeded()
         }
         CATransaction.begin()
-        CATransaction.setAnimationDuration(open ? 0.18 : 0.12)
+        CATransaction.setAnimationDuration(open ? 0.3 : 0.18)
+        CATransaction.setAnimationTimingFunction(Self.curve)
         for l in [track, trackFill, knob] { l.opacity = open ? 1 : 0 }
-        layer?.backgroundColor = NSColor(white: open ? 0.30 : 0.36, alpha: 1).cgColor
+        layer?.backgroundColor = NSColor(white: open ? 0.24 : 0.36, alpha: 1).cgColor
         CATransaction.commit()
     }
 
@@ -132,37 +129,43 @@ final class HoldSlideKey: NSView {
         holdTimer?.invalidate()
         value = startValue
         setOpen(true)
-        show(startValue, animated: false)
+        placeTrack()
     }
 
     override func touchesBegan(with event: NSEvent) {
         guard let t = event.touches(matching: .began, in: self).first else { return }
+        closeWork?.cancel()
         startX = t.location(in: self).x
-        startValue = get()
-        // Press feedback before anything else happens.
-        CATransaction.begin(); CATransaction.setAnimationDuration(0.08)
-        layer?.backgroundColor = NSColor(white: 0.46, alpha: 1).cgColor
-        CATransaction.commit()
-        holdTimer?.invalidate()
-        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.22, repeats: false) { [weak self] _ in self?.beginSlide() }
+        startValue = sliding ? value : get()
+        if !sliding {
+            CATransaction.begin(); CATransaction.setAnimationDuration(0.1)
+            layer?.backgroundColor = NSColor(white: 0.46, alpha: 1).cgColor
+            CATransaction.commit()
+            holdTimer?.invalidate()
+            holdTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in self?.beginSlide() }
+        }
     }
 
     override func touchesMoved(with event: NSEvent) {
         guard let t = event.touches(matching: .moved, in: self).first else { return }
         let dx = t.location(in: self).x - startX
-        if !sliding && abs(dx) > 5 { beginSlide() }
+        if !sliding && abs(dx) > 4 { beginSlide() }
         guard sliding else { return }
-        let v = max(0, min(1, startValue + Float(dx / travel)))
-        set(v); show(v)
+        // 1:1 with the track, like a real slider.
+        let v = max(0, min(1, startValue + Float(dx / trackWidth)))
+        value = v
+        set(v)
+        placeTrack()
     }
 
     override func touchesEnded(with event: NSEvent) {
         holdTimer?.invalidate()
         if sliding {
-            // Linger a moment on the final value, then fold back.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in self?.setOpen(false) }
+            let w = DispatchWorkItem { [weak self] in self?.setOpen(false); self?.updateIcon() }
+            closeWork = w
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.9, execute: w)
         } else {
-            CATransaction.begin(); CATransaction.setAnimationDuration(0.15)
+            CATransaction.begin(); CATransaction.setAnimationDuration(0.2)
             layer?.backgroundColor = NSColor(white: 0.36, alpha: 1).cgColor
             CATransaction.commit()
             onTap()

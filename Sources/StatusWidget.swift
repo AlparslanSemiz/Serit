@@ -31,9 +31,9 @@ enum Battery {
             NSBezierPath(roundedRect: body, xRadius: 5, yRadius: 5).fill()
             // level
             let top: NSColor = powered ? NSColor(srgbRed: 0.33, green: 0.86, blue: 0.47, alpha: 1)
-                : low ? NSColor(srgbRed: 1.0, green: 0.36, blue: 0.33, alpha: 1) : NSColor(white: 0.98, alpha: 1)
+                : low ? NSColor(srgbRed: 1.0, green: 0.36, blue: 0.33, alpha: 1) : NSColor(white: 1, alpha: 0.58)
             let bottom: NSColor = powered ? NSColor(srgbRed: 0.20, green: 0.72, blue: 0.35, alpha: 1)
-                : low ? NSColor(srgbRed: 0.88, green: 0.22, blue: 0.22, alpha: 1) : NSColor(white: 0.82, alpha: 1)
+                : low ? NSColor(srgbRed: 0.88, green: 0.22, blue: 0.22, alpha: 1) : NSColor(white: 1, alpha: 0.42)
             NSGraphicsContext.saveGraphicsState()
             NSBezierPath(roundedRect: body, xRadius: 5, yRadius: 5).addClip()
             NSGradient(colors: [top, bottom])!.draw(in: NSRect(x: body.minX, y: body.minY, width: body.width * max(p, 0.06), height: body.height), angle: -90)
@@ -54,21 +54,18 @@ enum Battery {
             let boltW: CGFloat = powered ? 7 : 0
             let x = body.midX - (ts.width + boltW) / 2
             let textPoint = NSPoint(x: x + boltW, y: body.midY - ts.height / 2 + 0.5)
-            func drawContent(_ color: NSColor) {
-                text.draw(at: textPoint, withAttributes: [.font: rounded, .foregroundColor: color])
-                if powered {
-                    let b = NSBezierPath(); let bx = x - 1, by = body.minY + 2.5
-                    b.move(to: NSPoint(x: bx + 5, y: by + 10)); b.line(to: NSPoint(x: bx + 1, y: by + 4.5)); b.line(to: NSPoint(x: bx + 3.6, y: by + 4.5))
-                    b.line(to: NSPoint(x: bx + 2.6, y: by)); b.line(to: NSPoint(x: bx + 6.4, y: by + 5.6)); b.line(to: NSPoint(x: bx + 3.8, y: by + 5.6)); b.close()
-                    color.setFill(); b.fill()
-                }
-            }
-            drawContent(.white)
-            if !low && !powered {
-                NSGraphicsContext.saveGraphicsState()
-                NSBezierPath(rect: fillRect).addClip()
-                drawContent(NSColor(white: 0.08, alpha: 1))
-                NSGraphicsContext.restoreGraphicsState()
+            // White digits over a translucent fill read at every level; a faint shadow lifts them.
+            NSGraphicsContext.saveGraphicsState()
+            let shadow = NSShadow(); shadow.shadowColor = NSColor(white: 0, alpha: 0.55); shadow.shadowBlurRadius = 1.2; shadow.shadowOffset = .zero
+            shadow.set()
+            text.draw(at: textPoint, withAttributes: [.font: rounded, .foregroundColor: NSColor.white])
+            NSGraphicsContext.restoreGraphicsState()
+            if powered {
+                let bx = x - 1, by = body.minY + 2.5
+                let bolt = NSBezierPath()
+                bolt.move(to: NSPoint(x: bx + 5, y: by + 10)); bolt.line(to: NSPoint(x: bx + 1, y: by + 4.5)); bolt.line(to: NSPoint(x: bx + 3.6, y: by + 4.5))
+                bolt.line(to: NSPoint(x: bx + 2.6, y: by)); bolt.line(to: NSPoint(x: bx + 6.4, y: by + 5.6)); bolt.line(to: NSPoint(x: bx + 3.8, y: by + 5.6)); bolt.close()
+                NSColor.white.setFill(); bolt.fill()
             }
             return true
         }

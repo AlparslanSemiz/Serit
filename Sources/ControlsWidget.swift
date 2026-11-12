@@ -176,13 +176,13 @@ final class QuickControls: NSObject {
     func item(for id: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
         switch id {
         case Self.volumeID:
-            let k = HoldSlideKey(symbol: { SystemVolume.symbol }, get: { SystemVolume.effective },
+            let k = HoldSlideKey(symbol: { SystemVolume.symbol }, minSymbol: "speaker.fill", maxSymbol: "speaker.wave.3.fill", get: { SystemVolume.effective },
                                                      set: { SystemVolume.level = $0; if $0 > 0 { SystemVolume.muted = false } },
                                                      onTap: { [weak self] in self?.openVolume() })
             volumeKey = k
             return TB.item(id.rawValue, k)
         case Self.brightnessID:
-            return TB.item(id.rawValue, HoldSlideKey(symbol: { DisplayBrightness.symbol }, get: { DisplayBrightness.level },
+            return TB.item(id.rawValue, HoldSlideKey(symbol: { DisplayBrightness.symbol }, minSymbol: "sun.min.fill", maxSymbol: "sun.max.fill", get: { DisplayBrightness.level },
                                                      set: { DisplayBrightness.level = $0 },
                                                      onTap: { [weak self] in self?.openBrightness() }))
         case Self.screenshotID:
