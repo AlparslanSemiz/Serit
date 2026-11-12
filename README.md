@@ -20,7 +20,7 @@
 ## Kurulum
 
 ```sh
-git clone <bu depo> && cd Serit
+git clone https://github.com/AlparslanSemiz/Serit.git && cd Serit
 ./build.sh
 ```
 
