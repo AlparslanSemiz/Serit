@@ -205,11 +205,17 @@ final class QuickControls: NSObject {
             ])
             cluster.wantsLayer = true
             keys.forEach { $0.overlayHost = cluster }
-            return TB.item(id.rawValue, cluster)
+            let clusterItem = TB.item(id.rawValue, cluster)
+            clusterItem.visibilityPriority = .high
+            return clusterItem
         case Self.screenshotID:
             return TB.item(id.rawValue, TB.button("camera.viewfinder", target: self, action: #selector(screenshot)))
         case Self.moreID:
-            return TB.item(id.rawValue, TB.button("chevron.left", width: 40, bright: false, target: self, action: #selector(openMore)))
+            // High priority: if the bar is ever too full, macOS drops low-priority items first,
+            // and the ‹ key is the only way into the other controls.
+            let more = TB.item(id.rawValue, TB.button("chevron.left", width: 40, bright: false, target: self, action: #selector(openMore)))
+            more.visibilityPriority = .high
+            return more
         default: return nil
         }
     }
