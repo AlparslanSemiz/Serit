@@ -169,7 +169,8 @@ final class DockWidget: NSObject {
             stack.addArrangedSubview(tile)
         }
         tiles = newTiles
-        let cap = max(140, Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom) - appKeysWidth - eventWidth)
+        // Two icons minimum; the rest scrolls. A higher floor overflowed the bar when an event showed.
+        let cap = max(96, Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom) - appKeysWidth - eventWidth)
         widthConstraint?.constant = min(CGFloat(order.count) * 46 + 4, cap)
     }
 

@@ -158,7 +158,7 @@ final class MediaWidget: NSObject {
         label.textColor = .white
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(lessThanOrEqualToConstant: 150).isActive = true
+        label.widthAnchor.constraint(lessThanOrEqualToConstant: 125).isActive = true
 
         // Tapping the artwork/title brings the player forward.
         let info = NSStackView(views: [art, label])

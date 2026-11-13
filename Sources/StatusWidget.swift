@@ -210,7 +210,7 @@ final class NextEvent {
         if next?.eventIdentifier != event?.eventIdentifier || next?.startDate != event?.startDate {
             event = next
             onChange?()
-            NotificationCenter.default.post(name: Self.widthChanged, object: nil, userInfo: ["width": next == nil ? CGFloat(0) : CGFloat(150)])
+            NotificationCenter.default.post(name: Self.widthChanged, object: nil, userInfo: ["width": next == nil ? CGFloat(0) : CGFloat(130)])
         }
     }
 }
@@ -241,6 +241,14 @@ final class StatusWidget: NSObject {
         eventButton.imagePosition = .imageLeading
         eventButton.target = self; eventButton.action = #selector(openCalendar)
         eventButton.isHidden = true
+        // When space runs short the event title gives way first (with "…"), never the clock or the ‹ key.
+        eventButton.lineBreakMode = .byTruncatingTail
+        eventButton.cell?.truncatesLastVisibleLine = true
+        eventButton.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        eventButton.widthAnchor.constraint(lessThanOrEqualToConstant: 130).isActive = true
+        for v in [weatherButton, batteryView, clockButton] as [NSView] {
+            v.setContentCompressionResistancePriority(.required, for: .horizontal)
+        }
         NextEvent.shared.onChange = { [weak self] in self?.render() }
         NextEvent.shared.refresh()
         clockButton.target = self; clockButton.action = #selector(openCalendar)
@@ -250,7 +258,7 @@ final class StatusWidget: NSObject {
         if s.statusEvent { views.append(eventButton) }
         if s.statusClock { views.append(clockButton) }
         let row = NSStackView(views: views)
-        row.spacing = 12
+        row.spacing = 10
         row.edgeInsets = NSEdgeInsets(top: 0, left: 6, bottom: 0, right: 4)
         item.view = row
         item.visibilityPriority = .high
@@ -286,7 +294,7 @@ final class StatusWidget: NSObject {
 
         if let e = NextEvent.shared.event {
             var title = e.title ?? ""
-            if title.count > 16 { title = String(title.prefix(15)) + "…" }
+            if title.count > 14 { title = String(title.prefix(13)) + "…" }
             eventButton.title = "\(clockFmt.string(from: e.startDate)) \(title)"
             eventButton.isHidden = false
         } else { eventButton.isHidden = true }
