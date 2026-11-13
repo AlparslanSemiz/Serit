@@ -21,6 +21,8 @@ iconutil -c icns "$BUILD/Serit.iconset" -o "$APP/Contents/Resources/Serit.icns"
 
 echo "→ derleme"
 swiftc -O Sources/*.swift -o "$APP/Contents/MacOS/Serit" -framework IOKit -framework CoreAudio -framework AudioToolbox -framework CoreLocation -framework EventKit
+# Now Playing helper: loaded into the system perl, see helper/nowplaying.m.
+clang -O2 -dynamiclib -fobjc-arc -framework AppKit helper/nowplaying.m -o "$APP/Contents/Resources/libseritnp.dylib"
 
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -46,6 +48,7 @@ EOF
 
 SIGN_ID="-"
 if security find-identity -p codesigning 2>/dev/null | grep -q "Veda Local Signing"; then SIGN_ID="Veda Local Signing"; fi
+codesign --force -s "$SIGN_ID" "$APP/Contents/Resources/libseritnp.dylib"
 codesign --force -s "$SIGN_ID" --identifier "$BUNDLE_ID" "$APP"
 
 [[ "${1:-}" == "--no-install" ]] && { echo "✓ $APP"; exit 0; }

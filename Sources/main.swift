@@ -37,42 +37,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSTouchBarDelegate, NS
 
     func applicationWillTerminate(_ n: Notification) { host.stop() }
 
+    var main: MainBarView?
+    private var shownCheck: DispatchWorkItem?
+
+    /// Full-width Touch Bar is 1004 pt; next to the Control Strip there are about 685.
+    static var barWidth: CGFloat { TouchBarHost.useFullWidth ? 1004 : 680 }
+
     private func buildBar() -> NSTouchBar {
         let s = Settings.shared
         let bar = NSTouchBar()
         bar.delegate = self
-        var ids: [NSTouchBarItem.Identifier] = []
-        dock = nil; media = nil; status = nil; appKeys = nil
-        if s.showDock { dock = DockWidget(); ids.append(DockWidget.id) }
-        if s.showAppKeys { appKeys = AppKeys(); ids.append(AppKeys.id) }
-        ids.append(.flexibleSpace)
-        if s.showMedia { media = MediaWidget(); ids.append(MediaWidget.id) }
-        if s.showVolume || s.showBrightness || s.showScreenshot { ids.append(QuickControls.clusterID) }
-        if s.showStatus { status = StatusWidget(); ids.append(StatusWidget.id) }
-        ids.append(QuickControls.moreID)
-        bar.defaultItemIdentifiers = ids
-        // Touch Bar is ~1004 pt wide (full width) or ~685 pt next to the Control Strip.
-        let total: CGFloat = TouchBarHost.useFullWidth ? 1000 : 680
-        var others: CGFloat = 0
-        if s.showMedia { others += 260 }
-        if s.showVolume { others += 76 }
-        if s.showBrightness { others += 76 }
-        if s.showScreenshot { others += 76 }
-        if s.showStatus { others += 215 }
-        others += 50   // the ‹ key
-        DockWidget.maxWidth = max(140, total - others)
-        DockWidget.mediaTitleRoom = s.showMedia ? 90 : 0
+        dock = s.showDock ? DockWidget() : nil
+        appKeys = s.showAppKeys ? AppKeys() : nil
+        media = s.showMedia ? MediaWidget() : nil
+        status = s.showStatus ? StatusWidget() : nil
+
+        func view(_ item: NSTouchBarItem?) -> NSView? { item?.view }
+        let left = [view(dock?.makeItem())].compactMap { $0 }
+        let keys = view(appKeys?.makeItem())
+        var right: [NSView] = []
+        if let v = view(media?.makeItem()) { right.append(v) }
+        if s.showVolume || s.showBrightness || s.showScreenshot, let v = view(quick.item(for: QuickControls.clusterID)) { right.append(v) }
+        if let v = view(status?.makeItem()) { right.append(v) }
+        if let v = view(quick.item(for: QuickControls.moreID)) { right.append(v) }
+
+        let width = Self.barWidth - widthTrim
+        let m = MainBarView(width: width, left: left, appKeys: keys, right: right)
+        main = m
+        quick.main = m
+        bar.defaultItemIdentifiers = [MainBarView.id]
+        log("bar built: \(Int(width)) pt, \(TouchBarHost.useFullWidth ? "full width" : "next to Control Strip")")
+        checkShown(m)
         return bar
     }
 
-    func touchBar(_ touchBar: NSTouchBar, makeItemForIdentifier id: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
-        switch id {
-        case DockWidget.id: return dock?.makeItem()
-        case MediaWidget.id: return media?.makeItem()
-        case StatusWidget.id: return status?.makeItem()
-        case AppKeys.id: return appKeys?.makeItem()
-        default: return quick.item(for: id)
+    /// If macOS refuses the item (too wide for the space it has), it shows nothing at all.
+    /// Notice that, shave a few points off and try again, and say so in the log.
+    private var widthTrim: CGFloat = 0
+    private func checkShown(_ m: MainBarView) {
+        shownCheck?.cancel()
+        let w = DispatchWorkItem { [weak self, weak m] in
+            guard let self, let m, self.main === m, Settings.shared.enabled else { return }
+            if m.window == nil {
+                guard self.widthTrim < 40 else { log("layout: bar still not shown at \(Int(m.barWidth)) pt, giving up trimming"); return }
+                self.widthTrim += 8
+                log("layout: bar not shown at \(Int(m.barWidth)) pt, retrying narrower")
+                self.host.rebuild()
+            }
         }
+        shownCheck = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: w)
+    }
+
+    func touchBar(_ touchBar: NSTouchBar, makeItemForIdentifier id: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
+        guard id == MainBarView.id, let main else { return nil }
+        let item = NSCustomTouchBarItem(identifier: id)
+        item.view = main
+        return item
     }
 
     // MARK: menu bar

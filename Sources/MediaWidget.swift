@@ -139,7 +139,7 @@ enum MediaKeys {
 final class MediaWidget: NSObject {
     static let id = NSTouchBarItem.Identifier("local.serit.media")
     private let art = NSImageView()
-    private let label = NSTextField(labelWithString: "")
+    private let label = MarqueeLabel()
     private let infoButton = NSButton()
     private var current: NowPlaying?
     private var timer: Timer?
@@ -154,11 +154,10 @@ final class MediaWidget: NSObject {
         art.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([art.widthAnchor.constraint(equalToConstant: 22), art.heightAnchor.constraint(equalToConstant: 22)])
 
-        label.font = .systemFont(ofSize: 12, weight: .medium)
-        label.textColor = .white
-        label.lineBreakMode = .byTruncatingTail
+        // Up to 170 pt; when the bar is full it gives way first and scrolls instead.
+        label.maxWidth = 170
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(lessThanOrEqualToConstant: 125).isActive = true
+        label.widthAnchor.constraint(greaterThanOrEqualToConstant: 100).isActive = true
 
         // Tapping the artwork/title brings the player forward.
         let info = NSStackView(views: [art, label])
@@ -198,6 +197,12 @@ final class MediaWidget: NSObject {
         playToggle = play
 
         update(nil)
+        // The helper pushes changes as they happen; the timer is only the AppleScript fallback.
+        NowPlayingHelper.shared.onChange = { [weak self] np in
+            guard let self, np != self.current || np?.artwork !== self.current?.artwork else { return }
+            self.update(np)
+        }
+        NowPlayingHelper.shared.start()
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.poll() }
         poll()
         return item
@@ -207,6 +212,13 @@ final class MediaWidget: NSObject {
     deinit { timer?.invalidate() }
 
     private func poll() {
+        // The helper knows exactly what is playing (including which browser tab); trust it,
+        // even when it says "nothing". AppleScript guessing is only for when it can't run.
+        if NowPlayingHelper.shared.alive {
+            let np = NowPlayingHelper.shared.latest
+            if np != current || np?.artwork !== current?.artwork { update(np) }
+            return
+        }
         NowPlayingSource.fetch { [weak self] np in
             guard let self, np != self.current || np?.artwork !== self.current?.artwork else { return }
             self.update(np)
@@ -224,7 +236,7 @@ final class MediaWidget: NSObject {
             NotificationCenter.default.post(name: Self.titleVisibilityChanged, object: nil, userInfo: ["shown": shows])
         }
         if let np, !np.title.isEmpty {
-            label.stringValue = np.artist.isEmpty ? np.title : "\(np.title) · \(np.artist)"
+            label.text = np.artist.isEmpty ? np.title : "\(np.title) · \(np.artist)"
             label.textColor = np.playing ? .white : NSColor.white.withAlphaComponent(0.55)
             if let a = np.artwork { art.image = a }
             else if let bid = np.appBundleID, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bid) {
