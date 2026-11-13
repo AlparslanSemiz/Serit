@@ -86,11 +86,23 @@ enum SelfTest {
         check("Öndeki uygulamaya dokununca gizleniyor", NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.calculator").first?.isHidden == true)
         if !wasRunning { NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.calculator").first?.terminate() }
 
-        // Now playing
-        var np: NowPlaying?; var done = false
-        NowPlayingSource.fetch { np = $0; done = true }
-        spin(6) { done }
-        check("Şu an çalan", done, np.map { "\($0.title)\($0.artist.isEmpty ? "" : " · \($0.artist)") [\($0.appBundleID ?? "sistem")]" } ?? "şu an çalan bir şey yok")
+        // Now playing: the perl helper first (it knows the exact tab), AppleScript only as fallback.
+        func describe(_ np: NowPlaying?) -> String {
+            np.map { "\($0.playing ? "▶" : "⏸") \($0.title)\($0.artist.isEmpty ? "" : " · \($0.artist)") [\($0.appBundleID ?? "sistem")]" } ?? "şu an çalan bir şey yok"
+        }
+        var helperAnswered = false
+        NowPlayingHelper.shared.onChange = { _ in helperAnswered = true }
+        NowPlayingHelper.shared.start()
+        spin(5) { helperAnswered }
+        NowPlayingHelper.shared.stop()
+        if helperAnswered {
+            check("Şu an çalan (MediaRemote yardımcısı)", true, describe(NowPlayingHelper.shared.latest))
+        } else {
+            var np: NowPlaying?; var done = false
+            NowPlayingSource.fetch { np = $0; done = true }
+            spin(6) { done }
+            check("Şu an çalan (yardımcı çalışmadı, AppleScript)", done, describe(np))
+        }
 
         print(failures == 0 ? "\nHepsi geçti." : "\n\(failures) kontrol başarısız.")
         return failures == 0 ? 0 : 1

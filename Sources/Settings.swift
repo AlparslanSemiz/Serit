@@ -1,8 +1,26 @@
 import Foundation
 import Combine
 
+/// Writes to stderr, which the LaunchAgent sends to ~/Library/Logs/serit.log.
+/// The file trims itself to its last 512 KB once it passes 2 MB.
 func log(_ s: String) {
     FileHandle.standardError.write("\(Date()) \(s)\n".data(using: .utf8)!)
+    LogTrim.count += 1
+    if LogTrim.count % 200 == 0 { LogTrim.trimIfNeeded() }
+}
+
+enum LogTrim {
+    static var count = 0
+    static let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/serit.log")
+    static func trimIfNeeded() {
+        guard let size = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int, size > 2_000_000,
+              let h = try? FileHandle(forUpdating: url) else { return }
+        defer { try? h.close() }
+        try? h.seek(toOffset: UInt64(size - 512_000))
+        guard let tail = try? h.readToEnd() else { return }
+        try? h.truncate(atOffset: 0)
+        h.write(tail)   // stderr is opened with O_APPEND, so later writes land after this
+    }
 }
 
 /// All user-facing settings, persisted in UserDefaults. Changing anything posts

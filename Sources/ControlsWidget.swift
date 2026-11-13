@@ -156,6 +156,8 @@ final class QuickControls: NSObject {
     static let clusterID = NSTouchBarItem.Identifier("local.serit.controls")
 
     private weak var host: TouchBarHost?
+    /// Panels open inside the main bar (see MainBarView).
+    weak var main: MainBarView?
     private weak var volumeKey: HoldSlideKey?
     private var volumeButton: NSButton?
     private var brightnessButton: NSButton?
@@ -241,23 +243,30 @@ final class QuickControls: NSObject {
 
     // MARK: actions on the main bar
     @objc private func screenshot() { SystemActions.screenshot() }
-    @objc private func openVolume() { host?.open(volumePanel(), autoClose: 4) }
-    @objc private func openBrightness() { host?.open(brightnessPanel(), autoClose: 4) }
-    @objc private func openMore() { host?.open(morePanel()) }
-    @objc private func close() { clearPanelRefs(); host?.closePanel() }
+    @objc private func openVolume() { main?.show(volumePanel(), autoClose: 4) }
+    @objc private func openBrightness() { main?.show(brightnessPanel(), autoClose: 4) }
+    @objc private func openMore() { main?.show(morePanel()) }
+    @objc private func close() { clearPanelRefs(); main?.closePanel() }
 
     private func clearPanelRefs() { volumeSlider = nil; brightnessSlider = nil; muteButton = nil; volumeLabel = nil; brightnessLabel = nil }
 
     // MARK: building panels
-    private func closeItem(_ symbol: String = "xmark") -> NSTouchBarItem {
-        TB.item("local.serit.panel.close", TB.button(symbol, width: 52, bright: false, target: self, action: #selector(close)))
+    /// Same size, look and place as the ‹ key that opened the panel.
+    private func closeKey(_ symbol: String = "chevron.right") -> NSButton {
+        TB.button(symbol, width: 40, bright: false, target: self, action: #selector(close))
     }
 
-    private func slider(value: Float, action: Selector, width: CGFloat) -> NSSlider {
+    /// `flexible` sliders stretch to fill a panel (at least `width`).
+    private func slider(value: Float, action: Selector, width: CGFloat, flexible: Bool = false) -> NSSlider {
         let s = NSSlider(value: Double(value), minValue: 0, maxValue: 1, target: self, action: action)
         s.isContinuous = true
         s.translatesAutoresizingMaskIntoConstraints = false
-        s.widthAnchor.constraint(equalToConstant: width).isActive = true
+        if flexible {
+            s.widthAnchor.constraint(greaterThanOrEqualToConstant: width).isActive = true
+            s.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        } else {
+            s.widthAnchor.constraint(equalToConstant: width).isActive = true
+        }
         return s
     }
 
@@ -275,7 +284,7 @@ final class QuickControls: NSObject {
         let mute = TB.button(SystemVolume.muted ? "speaker.slash.fill" : "speaker.fill", width: 52, target: self, action: #selector(toggleMute))
         muteButton = mute
         let down = TB.button("minus", width: 44, bright: false, target: self, action: #selector(volumeDown))
-        let s = slider(value: SystemVolume.effective, action: #selector(volumeChanged(_:)), width: width); volumeSlider = s
+        let s = slider(value: SystemVolume.effective, action: #selector(volumeChanged(_:)), width: width, flexible: true); volumeSlider = s
         let up = TB.button("plus", width: 44, bright: false, target: self, action: #selector(volumeUp))
         let l = label(); volumeLabel = l; updateVolumeLabel()
         let row = NSStackView(views: [mute, down, s, up, l]); row.spacing = 8
@@ -285,24 +294,24 @@ final class QuickControls: NSObject {
     private func brightnessRow(width: CGFloat) -> NSView {
         let icon = TB.button("sun.max.fill", width: 52, target: self, action: #selector(brightnessMax))
         let down = TB.button("minus", width: 44, bright: false, target: self, action: #selector(brightnessDown))
-        let s = slider(value: DisplayBrightness.level, action: #selector(brightnessChanged(_:)), width: width); brightnessSlider = s
+        let s = slider(value: DisplayBrightness.level, action: #selector(brightnessChanged(_:)), width: width, flexible: true); brightnessSlider = s
         let up = TB.button("plus", width: 44, bright: false, target: self, action: #selector(brightnessUp))
         let l = label(); brightnessLabel = l; updateBrightnessLabel()
         let row = NSStackView(views: [icon, down, s, up, l]); row.spacing = 8
         return row
     }
 
-    private func volumePanel() -> NSTouchBar {
+    private func volumePanel() -> NSView {
         clearPanelRefs()
-        return PanelBar([TB.item("local.serit.panel.volume", volumeRow(width: 560))], trailing: [closeItem("xmark")])
+        return MainBarView.panelRow([volumeRow(width: 300)], close: closeKey())
     }
 
-    private func brightnessPanel() -> NSTouchBar {
+    private func brightnessPanel() -> NSView {
         clearPanelRefs()
-        return PanelBar([TB.item("local.serit.panel.brightness", brightnessRow(width: 560))], trailing: [closeItem("xmark")])
+        return MainBarView.panelRow([brightnessRow(width: 300)], close: closeKey())
     }
 
-    private func morePanel() -> NSTouchBar {
+    private func morePanel() -> NSView {
         clearPanelRefs()
         let media = NSStackView(views: [
             TB.button("backward.fill", width: 46, target: self, action: #selector(prevTrack)),
@@ -322,21 +331,16 @@ final class QuickControls: NSObject {
         ]); system.spacing = 4
         let volRow = NSStackView(views: [mute, vol]); volRow.spacing = 6
         let briRow = NSStackView(views: [sun, bri]); briRow.spacing = 6
-        var kbItem: NSTouchBarItem?
+        var groups: [NSView] = [media, volRow, briRow]
         if KeyboardBacklight.available {
             let kb = TB.button("light.max", width: 46, target: self, action: #selector(keyboardToggle))
             let ks = slider(value: KeyboardBacklight.level, action: #selector(keyboardChanged(_:)), width: 110)
             let kbRow = NSStackView(views: [kb, ks]); kbRow.spacing = 6
-            kbItem = TB.item("local.serit.more.keyboard", kbRow)
+            groups.append(kbRow)
             for s in [vol, bri] { s.constraints.filter { $0.firstAttribute == .width }.forEach { $0.constant = 110 } }
         }
-        return PanelBar([
-            TB.item("local.serit.more.media", media),
-            TB.item("local.serit.more.volume", volRow),
-            TB.item("local.serit.more.brightness", briRow),
-            kbItem,
-            TB.item("local.serit.more.system", system),
-        ], trailing: [closeItem("chevron.right")])
+        groups.append(system)
+        return MainBarView.panelRow(groups, close: closeKey())
     }
 
     // MARK: panel actions
@@ -374,6 +378,6 @@ final class QuickControls: NSObject {
 
     /// Single-slider panels close themselves after a few idle seconds; the "more" panel stays.
     private func keepOpenIfSliderPanel() {
-        if volumeLabel != nil || brightnessLabel != nil { host?.touchPanel(autoClose: 4) }
+        if volumeLabel != nil || brightnessLabel != nil { main?.touch(autoClose: 4) }
     }
 }

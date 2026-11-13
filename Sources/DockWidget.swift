@@ -70,12 +70,7 @@ final class DockWidget: NSObject {
     private var tiles: [String: DockTile] = [:]
     private var badgeTimer: Timer?
     private var widthConstraint: NSLayoutConstraint?
-    static var maxWidth: CGFloat = 430
-    /// Room the media title would use; handed to the dock while nothing is playing.
-    static var mediaTitleRoom: CGFloat = 0
-    private var mediaTitleShown = true
-    private var appKeysWidth: CGFloat = 0
-    private var eventWidth: CGFloat = 0
+    private var maxConstraint: NSLayoutConstraint?
 
     func makeItem() -> NSTouchBarItem {
         let item = NSCustomTouchBarItem(identifier: Self.id)
@@ -89,9 +84,23 @@ final class DockWidget: NSObject {
         scroll.horizontalScrollElasticity = .allowed
         scroll.translatesAutoresizingMaskIntoConstraints = false
         stack.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        // Exactly as wide as its icons, capped so the other widgets always fit; the rest scrolls.
+        // Pin the icons to the start of the scroll area; unpinned, they drifted out of view
+        // whenever the dock was resized and the dock looked empty.
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            stack.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+            scroll.heightAnchor.constraint(equalToConstant: 30),
+        ])
+        // As wide as its icons when there is room. The main bar squeezes it (and it scrolls)
+        // when the other widgets need the space, down to two icons.
         widthConstraint = scroll.widthAnchor.constraint(equalToConstant: 200)
+        widthConstraint?.priority = NSLayoutConstraint.Priority(250)
         widthConstraint?.isActive = true
+        maxConstraint = scroll.widthAnchor.constraint(lessThanOrEqualToConstant: 200)
+        maxConstraint?.isActive = true
+        let minimum = scroll.widthAnchor.constraint(greaterThanOrEqualToConstant: 96)
+        minimum.priority = NSLayoutConstraint.Priority(750)
+        minimum.isActive = true
         item.view = scroll
         item.visibilityPriority = .high
 
@@ -100,18 +109,6 @@ final class DockWidget: NSObject {
                   NSWorkspace.didActivateApplicationNotification, NSWorkspace.didHideApplicationNotification,
                   NSWorkspace.didUnhideApplicationNotification] {
             nc.addObserver(self, selector: #selector(reload), name: n, object: nil)
-        }
-        NotificationCenter.default.addObserver(forName: NextEvent.widthChanged, object: nil, queue: .main) { [weak self] n in
-            self?.eventWidth = n.userInfo?["width"] as? CGFloat ?? 0
-            self?.reload()
-        }
-        NotificationCenter.default.addObserver(forName: AppKeys.widthChanged, object: nil, queue: .main) { [weak self] n in
-            self?.appKeysWidth = n.userInfo?["width"] as? CGFloat ?? 0
-            self?.reload()
-        }
-        NotificationCenter.default.addObserver(forName: MediaWidget.titleVisibilityChanged, object: nil, queue: .main) { [weak self] n in
-            self?.mediaTitleShown = n.userInfo?["shown"] as? Bool ?? true
-            self?.reload()
         }
         reload()
         if Settings.shared.dockBadges {
@@ -169,9 +166,9 @@ final class DockWidget: NSObject {
             stack.addArrangedSubview(tile)
         }
         tiles = newTiles
-        // Two icons minimum; the rest scrolls. A higher floor overflowed the bar when an event showed.
-        let cap = max(96, Self.maxWidth + (mediaTitleShown ? 0 : Self.mediaTitleRoom) - appKeysWidth - eventWidth)
-        widthConstraint?.constant = min(CGFloat(order.count) * 46 + 4, cap)
+        let content = CGFloat(order.count) * 46 + 4
+        widthConstraint?.constant = content
+        maxConstraint?.constant = content
     }
 
     @objc private func tap(_ t: DockTile) {
