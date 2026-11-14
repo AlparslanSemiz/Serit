@@ -17,6 +17,7 @@ enum SelfTest {
         while Date() < end && !until() { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
     }
 
+    // swiftlint:disable:next function_body_length
     static func run() -> Int32 {
         print("Şerit öz-test\n")
 
@@ -55,7 +56,9 @@ enum SelfTest {
         } else { check("Klavye ışığı", false, "CoreBrightness bulunamadı") }
 
         // Battery
-        if let b = Battery.read() { check("Pil", (0...100).contains(b.percent), "\(b.percent)%\(b.charging ? ", şarj oluyor" : "")\(b.onAC ? ", adaptör takılı" : "")") }
+        if let b = Battery.read() {
+            check("Pil", (0...100).contains(b.percent), "\(b.percent)%\(b.charging ? ", şarj oluyor" : "")\(b.onAC ? ", adaptör takılı" : "")")
+        }
         else { check("Pil", false, "okunamadı") }
 
         // Weather
@@ -73,7 +76,8 @@ enum SelfTest {
         check("Dock", count > 0, "\(count) uygulama (\(pinned) sabitlenmiş)")
         check("Erişilebilirlik izni (rozetler, medya tuşları)", AXIsProcessTrusted())
         let badges = dock.debugBadges()
-        check("Dock rozetleri okunabiliyor", AXIsProcessTrusted(), badges.isEmpty ? "şu an rozet yok" : badges.map { "\($0.key.split(separator: ".").last ?? ""): \($0.value)" }.joined(separator: ", "))
+        check("Dock rozetleri okunabiliyor", AXIsProcessTrusted(),
+              badges.isEmpty ? "şu an rozet yok" : badges.map { "\($0.key.split(separator: ".").last ?? ""): \($0.value)" }.joined(separator: ", "))
 
         // Dock tap action (open + bring forward) on a harmless app
         let calc = URL(fileURLWithPath: "/System/Applications/Calculator.app")
@@ -83,12 +87,14 @@ enum SelfTest {
         check("Dock'a dokununca uygulama açılıyor", NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.calculator")
         dock.debugTap(bundleID: "com.apple.calculator", url: calc)   // frontmost → hide
         spin(2) { NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.calculator").first?.isHidden == true }
-        check("Öndeki uygulamaya dokununca gizleniyor", NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.calculator").first?.isHidden == true)
+        check("Öndeki uygulamaya dokununca gizleniyor",
+              NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.calculator").first?.isHidden == true)
         if !wasRunning { NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.calculator").first?.terminate() }
 
         // Now playing: the perl helper first (it knows the exact tab), AppleScript only as fallback.
         func describe(_ np: NowPlaying?) -> String {
-            np.map { "\($0.playing ? "▶" : "⏸") \($0.title)\($0.artist.isEmpty ? "" : " · \($0.artist)") [\($0.appBundleID ?? "sistem")]" } ?? "şu an çalan bir şey yok"
+            np.map { "\($0.playing ? "▶" : "⏸") \($0.title)\($0.artist.isEmpty ? "" : " · \($0.artist)") [\($0.appBundleID ?? "sistem")]" }
+                ?? "şu an çalan bir şey yok"
         }
         var helperAnswered = false
         NowPlayingHelper.shared.onChange = { _ in helperAnswered = true }

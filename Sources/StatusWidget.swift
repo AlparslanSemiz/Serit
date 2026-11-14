@@ -65,7 +65,8 @@ enum Battery {
                 let bx = x - 1, by = body.minY + 2.5
                 let bolt = NSBezierPath()
                 bolt.move(to: NSPoint(x: bx + 5, y: by + 10)); bolt.line(to: NSPoint(x: bx + 1, y: by + 4.5)); bolt.line(to: NSPoint(x: bx + 3.6, y: by + 4.5))
-                bolt.line(to: NSPoint(x: bx + 2.6, y: by)); bolt.line(to: NSPoint(x: bx + 6.4, y: by + 5.6)); bolt.line(to: NSPoint(x: bx + 3.8, y: by + 5.6)); bolt.close()
+                bolt.line(to: NSPoint(x: bx + 2.6, y: by)); bolt.line(to: NSPoint(x: bx + 6.4, y: by + 5.6)); bolt.line(to: NSPoint(x: bx + 3.8, y: by + 5.6))
+                bolt.close()
                 NSColor.white.setFill(); bolt.fill()
             }
             return true

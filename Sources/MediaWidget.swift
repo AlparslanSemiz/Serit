@@ -144,6 +144,7 @@ final class MediaWidget: NSObject {
     private var current: NowPlaying?
     private var timer: Timer?
 
+    // swiftlint:disable:next function_body_length
     func makeItem() -> NSTouchBarItem {
         let item = NSCustomTouchBarItem(identifier: Self.id)
 

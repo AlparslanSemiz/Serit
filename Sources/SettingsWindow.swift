@@ -19,7 +19,11 @@ struct SettingsView: View {
                 Toggle("Tam genişlik (Control Strip'i gizle)", isOn: $s.fullWidth)
                     .disabled(!TouchBarHost.canShareWithControlStrip)
                 if !TouchBarHost.canShareWithControlStrip {
-                    Text("macOS Touch Bar ayarın \"Control Strip\" modunda; Şerit tam genişlikte gösteriliyor. Control Strip'i yanında istersen: Sistem Ayarları → Klavye → Touch Bar Ayarları → Touch Bar'da gösterilen: Uygulama Denetimleri, ve \"Control Strip'i göster\" açık.")
+                    Text("""
+                        macOS Touch Bar ayarın "Control Strip" modunda; Şerit tam genişlikte gösteriliyor. \
+                        Control Strip'i yanında istersen: Sistem Ayarları → Klavye → Touch Bar Ayarları → \
+                        Touch Bar'da gösterilen: Uygulama Denetimleri, ve "Control Strip'i göster" açık.
+                        """)
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Toggle("Control Strip'te Şerit düğmesi", isOn: $s.showTrayButton)
@@ -34,7 +38,10 @@ struct SettingsView: View {
                 Toggle(isOn: $s.showScreenshot) { Label("Ekran görüntüsü", systemImage: "camera.viewfinder") }
                 Toggle(isOn: $s.showStatus) { Label("Durum", systemImage: "clock") }
             } header: { Text("Widget'lar") } footer: {
-                Text("Ses veya parlaklık: dokununca kaydırıcı şeridi açılır, basılı tutup sağa sola kaydırınca doğrudan ayarlanır. En sağdaki ‹ diğer kontrolleri açar.").foregroundStyle(.secondary)
+                Text("""
+                    Ses veya parlaklık: dokununca kaydırıcı şeridi açılır, basılı tutup sağa sola kaydırınca doğrudan ayarlanır. \
+                    En sağdaki ‹ diğer kontrolleri açar.
+                    """).foregroundStyle(.secondary)
             }
 
             Section {

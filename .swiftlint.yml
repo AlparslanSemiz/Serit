@@ -1,0 +1,27 @@
+excluded:
+  - .build
+  - build
+  - Packages
+  - DerivedData
+
+disabled_rules:
+  - trailing_comma
+  - inclusive_language
+  - statement_position # "}\nelse" bilinçli üslup
+
+line_length:
+  warning: 160
+  error: 220
+  ignores_comments: true
+  ignores_urls: true
+
+# Kısa değişken adları (x, w, s, i...) projenin üslubu.
+identifier_name:
+  min_length: 1
+  max_length: 50
+type_name:
+  min_length: 1
+  max_length: 50
+
+large_tuple:
+  warning: 4

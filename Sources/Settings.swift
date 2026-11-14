@@ -4,7 +4,7 @@ import Combine
 /// Writes to stderr, which the LaunchAgent sends to ~/Library/Logs/serit.log.
 /// The file trims itself to its last 512 KB once it passes 2 MB.
 func log(_ s: String) {
-    FileHandle.standardError.write("\(Date()) \(s)\n".data(using: .utf8)!)
+    FileHandle.standardError.write(Data("\(Date()) \(s)\n".utf8))
     LogTrim.count += 1
     if LogTrim.count % 200 == 0 { LogTrim.trimIfNeeded() }
 }
@@ -58,6 +58,7 @@ final class Settings: ObservableObject {
     @Published var weatherLat: Double
     @Published var weatherLon: Double
 
+    // swiftlint:disable:next function_body_length
     private init() {
         let defaults = UserDefaults.standard
         func b(_ k: String, _ def: Bool) -> Bool { defaults.object(forKey: k) as? Bool ?? def }

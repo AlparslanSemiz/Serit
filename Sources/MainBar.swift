@@ -124,7 +124,8 @@ final class MainBarView: NSView {
     private func reportLayout() {
         func w(_ v: NSView) -> String { v.isHidden ? "hidden" : "\(Int(v.frame.width))" }
         var parts = ["bar=\(Int(barWidth))", "window=\(window.map { "\(Int($0.frame.width))" } ?? "none")"]
-        parts.append("left=[" + leftViews.map(w).joined(separator: ",") + (appKeysView.map { ",keys=" + (keysShown ? "\(Int($0.frame.width))" : "hidden") } ?? "") + "]")
+        let keys = appKeysView.map { ",keys=" + (keysShown ? "\(Int($0.frame.width))" : "hidden") } ?? ""
+        parts.append("left=[" + leftViews.map(w).joined(separator: ",") + keys + "]")
         parts.append("right=[" + rightStack.arrangedSubviews.map(w).joined(separator: ",") + "]")
         parts.append("free=\(Int(rightStack.frame.minX - leftMaxX))")
         if let p = panel { parts.append("panel=\(Int(p.frame.width))") }
