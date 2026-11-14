@@ -12,6 +12,7 @@ final class DockTile: NSButton {
     init(bundleID: String, url: URL, icon: NSImage) {
         self.bundleID = bundleID; self.appURL = url
         super.init(frame: NSRect(x: 0, y: 0, width: 44, height: 30))
+        // swiftlint:disable:next force_cast
         let img = icon.copy() as! NSImage
         img.size = NSSize(width: 24, height: 24)
         image = img

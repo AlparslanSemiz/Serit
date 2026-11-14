@@ -2,6 +2,7 @@
 // a glowing strip of colored segments on a dark keyboard-like tile.
 import Cocoa
 
+// swiftlint:disable:next identifier_name
 let S: CGFloat = 1024
 let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(S), pixelsHigh: Int(S), bitsPerSample: 8,
                            samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
@@ -45,4 +46,5 @@ for (x, w, col) in segs {
     col.setFill(); NSBezierPath(roundedRect: seg, xRadius: 18, yRadius: 18).fill()
 }
 
+// swiftlint:disable:next force_try
 try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[1]))

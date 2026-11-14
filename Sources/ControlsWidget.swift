@@ -177,6 +177,7 @@ final class QuickControls: NSObject {
     }
     deinit { syncTimer?.invalidate() }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func item(for id: NSTouchBarItem.Identifier) -> NSTouchBarItem? {
         switch id {
         case Self.volumeID:
@@ -186,7 +187,8 @@ final class QuickControls: NSObject {
             volumeKey = k
             return TB.item(id.rawValue, k)
         case Self.brightnessID:
-            return TB.item(id.rawValue, HoldSlideKey(symbol: { DisplayBrightness.symbol }, minSymbol: "sun.min.fill", maxSymbol: "sun.max.fill", get: { DisplayBrightness.level },
+            return TB.item(id.rawValue, HoldSlideKey(symbol: { DisplayBrightness.symbol }, minSymbol: "sun.min.fill", maxSymbol: "sun.max.fill",
+                                                     get: { DisplayBrightness.level },
                                                      set: { DisplayBrightness.level = $0 },
                                                      onTap: { [weak self] in self?.openBrightness() }))
         case Self.clusterID:
@@ -357,11 +359,20 @@ final class QuickControls: NSObject {
         updateBrightnessLabel(); sync(); keepOpenIfSliderPanel()
     }
     private func step(_ v: Float, _ d: Float) -> Float { max(0, min(1, (v / 0.0625).rounded() * 0.0625 + d)) }
-    @objc private func volumeUp() { SystemVolume.level = step(SystemVolume.effective, 0.0625); SystemVolume.muted = false; sync(); updateVolumeLabel(); keepOpenIfSliderPanel() }
+    @objc private func volumeUp() {
+        SystemVolume.level = step(SystemVolume.effective, 0.0625); SystemVolume.muted = false
+        sync(); updateVolumeLabel(); keepOpenIfSliderPanel()
+    }
     @objc private func volumeDown() { SystemVolume.level = step(SystemVolume.effective, -0.0625); sync(); updateVolumeLabel(); keepOpenIfSliderPanel() }
     @objc private func toggleMute() { SystemVolume.muted.toggle(); sync(); updateVolumeLabel(); keepOpenIfSliderPanel() }
-    @objc private func brightnessUp() { DisplayBrightness.level = step(DisplayBrightness.level, 0.0625); sync(); updateBrightnessLabel(); keepOpenIfSliderPanel() }
-    @objc private func brightnessDown() { DisplayBrightness.level = step(DisplayBrightness.level, -0.0625); sync(); updateBrightnessLabel(); keepOpenIfSliderPanel() }
+    @objc private func brightnessUp() {
+        DisplayBrightness.level = step(DisplayBrightness.level, 0.0625)
+        sync(); updateBrightnessLabel(); keepOpenIfSliderPanel()
+    }
+    @objc private func brightnessDown() {
+        DisplayBrightness.level = step(DisplayBrightness.level, -0.0625)
+        sync(); updateBrightnessLabel(); keepOpenIfSliderPanel()
+    }
     @objc private func brightnessMax() { DisplayBrightness.level = 1; sync(); updateBrightnessLabel(); keepOpenIfSliderPanel() }
     @objc private func keyboardChanged(_ s: NSSlider) { KeyboardBacklight.level = s.floatValue }
     private var keyboardBeforeOff: Float = 0.5
