@@ -2,7 +2,8 @@
 
 <h1 align="center">Şerit</h1>
 <p align="center">A Touch Bar that stays put.</p>
-<p align="center"><a href="https://github.com/AlparslanSemiz/Serit/actions/workflows/build.yml"><img src="https://github.com/AlparslanSemiz/Serit/actions/workflows/build.yml/badge.svg" alt="build"></a> <a href="https://github.com/AlparslanSemiz/Serit/releases/latest"><img src="https://img.shields.io/github/v/release/AlparslanSemiz/Serit" alt="release"></a></p>
+<p align="center"><a href="https://github.com/AlparslanSemiz/Serit/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/AlparslanSemiz/Serit/build.yml?style=flat&label=build" alt="build"></a> <a href="https://github.com/AlparslanSemiz/Serit/releases/latest"><img src="https://img.shields.io/github/v/release/AlparslanSemiz/Serit?style=flat&color=555" alt="release"></a> <img src="https://img.shields.io/badge/macOS-13%2B-555?style=flat" alt="macOS 13+"> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat" alt="MIT license"></a></p>
+<p align="center"><b>Install:</b> <code>brew install alparslansemiz/tap/serit</code> · <a href="#install">other ways</a></p>
 
 <p align="center"><img src="assets/touchbar.png" alt="Şerit on the Touch Bar: main strip, volume panel and the extra controls" width="100%"></p>
 
@@ -71,6 +72,10 @@ Runs every action behind the buttons (volume, brightness, keyboard backlight, Do
 launchctl bootout gui/$(id -u)/local.$(whoami).serit
 rm -rf ~/Applications/Şerit.app ~/Library/LaunchAgents/local.$(whoami).serit.plist ~/.local/src/Serit
 ```
+
+## Status
+
+Released as v1.3.0. It targets Touch Bar MacBook Pros only. It relies on private macOS APIs, so a macOS update can break parts of it; each feature turns itself off instead of crashing.
 
 ## License
 
