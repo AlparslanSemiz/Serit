@@ -61,12 +61,22 @@ macOS only tells Apple-signed programs what is playing. Şerit therefore loads a
 ## Self-test
 
 ```sh
-~/Applications/Şerit.app/Contents/MacOS/Serit --selftest
+~/Applications/Şerit.app/Contents/MacOS/Serit --selftest              # script install
+"$(brew --prefix serit)/Serit.app/Contents/MacOS/Serit" --selftest    # Homebrew install
 ```
 
 Runs every action behind the buttons (volume, brightness, keyboard backlight, Dock open/hide, badges, battery, weather, now playing), checks the result and puts everything back.
 
 ## Uninstall
+
+If you installed with Homebrew:
+
+```sh
+brew services stop serit
+brew uninstall serit
+```
+
+If you installed with the script:
 
 ```sh
 launchctl bootout gui/$(id -u)/local.$(whoami).serit
